@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ============================================================
    PIXEL MOCK STUDIO — Material 3 Expressive
@@ -442,7 +441,6 @@ body::before {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 40px 32px;
-  perspective: 1500px;
   min-height: 0;
   padding: 16px 0;
 }
@@ -460,89 +458,49 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 580px;
-  transform-style: preserve-3d;
+  min-height: 600px;
+  padding: 24px;
   animation: cellEnter var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-bounce) both;
-  padding: 8px;
 }
 @keyframes cellEnter {
-  from { opacity: 0; transform: translateY(30px) scale(0.9); }
+  from { opacity: 0; transform: translateY(24px) scale(0.95); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Static phone stage — what you see is what you get */
 .mockup-stage {
   position: relative;
-  transform-style: preserve-3d;
-  width: 260px;
-  height: 540px;
-  transition: transform 0.4s var(--md-sys-motion-easing-emphasized);
+  width: 280px;
+  height: 580px;
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-spring);
+}
+.mockup-cell:hover .mockup-stage {
+  transform: translateY(-6px);
 }
 
-/* ---- Animation presets ---- */
-.anim-rotate .mockup-stage {
-  animation: rotateY 8s linear infinite;
-}
-.anim-float .mockup-stage {
-  animation: floatBob 4s ease-in-out infinite;
-}
-.anim-tilt .mockup-stage {
-  transform: rotateY(-6deg) rotateX(3deg);
-}
-.anim-showcase .mockup-stage {
-  animation:
-    showcaseIn 1s var(--md-sys-motion-easing-emphasized) both,
-    gentleSway 8s ease-in-out infinite 1s;
-}
-.anim-static .mockup-stage {
-  transform: rotateY(-10deg) rotateX(4deg);
-}
-
-@keyframes rotateY {
-  from { transform: rotateY(0deg); }
-  to   { transform: rotateY(360deg); }
-}
-@keyframes floatBob {
-  0%, 100% { transform: translateY(0) rotateZ(-1deg); }
-  50%      { transform: translateY(-16px) rotateZ(1deg); }
-}
-@keyframes showcaseIn {
-  0%   { transform: rotateY(-90deg) scale(0.6); opacity: 0; }
-  100% { transform: rotateY(0deg) scale(1); opacity: 1; }
-}
-@keyframes gentleSway {
-  0%, 100% { transform: rotateY(-8deg) rotateX(3deg); }
-  50%      { transform: rotateY(8deg) rotateX(-2deg); }
-}
-
-/* ---- Pixel 10 Phone Body ---- */
+/* ---- Pixel 10 Phone Body (static, front-only) ---- */
 .phone {
   position: absolute;
   inset: 0;
-  transform-style: preserve-3d;
-}
-
-.phone-face {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--md-sys-shape-corner-xl);
+  border-radius: 38px;
+  padding: 7px;
   background: linear-gradient(145deg, #2a2a2e, #0f0f12);
-  padding: 6px;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 20px 40px rgba(0, 0, 0, 0.4);
-  backface-visibility: hidden;
+    0 30px 60px rgba(0, 0, 0, 0.55),
+    0 12px 24px rgba(0, 0, 0, 0.4);
 }
-.phone-face.frame-obsidian { background: linear-gradient(145deg, #2a2a2e, #0f0f12); }
-.phone-face.frame-porcelain { background: linear-gradient(145deg, #f5f5f0, #d4d4cc); }
-.phone-face.frame-rose { background: linear-gradient(145deg, #e8a5b8, #b86d80); }
-.phone-face.frame-hazel { background: linear-gradient(145deg, #c9b896, #8a7858); }
+.phone.frame-obsidian { background: linear-gradient(145deg, #2a2a2e, #0f0f12); }
+.phone.frame-porcelain { background: linear-gradient(145deg, #f5f5f0, #d4d4cc); }
+.phone.frame-rose { background: linear-gradient(145deg, #e8a5b8, #b86d80); }
+.phone.frame-hazel { background: linear-gradient(145deg, #c9b896, #8a7858); }
 
 .phone-screen {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 24px;
+  border-radius: 32px;
   overflow: hidden;
   background: #000;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.8);
@@ -558,7 +516,7 @@ body::before {
 /* Punch-hole front camera */
 .punch-hole {
   position: absolute;
-  top: 12px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   width: 10px;
@@ -596,103 +554,11 @@ body::before {
   border-radius: 0 2px 2px 0;
 }
 
-/* ---- Back of phone ---- */
-.phone-back {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--md-sys-shape-corner-xl);
-  background: linear-gradient(145deg, #1a1a1d, #050507);
-  transform: rotateY(180deg);
-  backface-visibility: hidden;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 20px 40px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
-}
-.phone-back.frame-obsidian { background: linear-gradient(145deg, #1a1a1d, #050507); }
-.phone-back.frame-porcelain { background: linear-gradient(145deg, #ededea, #c8c8c0); }
-.phone-back.frame-rose { background: linear-gradient(145deg, #d99cb0, #a85a70); }
-.phone-back.frame-hazel { background: linear-gradient(145deg, #b8a785, #786a4f); }
-
-/* Camera bar */
-.camera-bar {
-  position: absolute;
-  top: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80%;
-  height: 56px;
-  background: linear-gradient(180deg, #0a0a0c, #1a1a1d);
-  border-radius: var(--md-sys-shape-corner-full);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 24px;
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 2px 6px rgba(0, 0, 0, 0.6);
-}
-.camera-lens {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #444 0%, #000 60%);
-  box-shadow:
-    inset 0 0 0 2px #1a1a1d,
-    inset 0 0 0 4px #2a2a2e,
-    0 2px 4px rgba(0, 0, 0, 0.6);
-  position: relative;
-}
-.camera-lens::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 8px;
-  height: 8px;
-  background: radial-gradient(circle, rgba(80, 130, 200, 0.6), transparent);
-  border-radius: 50%;
-}
-.camera-flash {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff8dc, #d4d4a0);
-  box-shadow: 0 0 6px rgba(255, 248, 220, 0.4);
-}
-
-.google-logo {
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  font: var(--md-sys-typescale-headline-small);
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
-  letter-spacing: -1px;
-}
-.phone-back.frame-porcelain .google-logo { color: rgba(0, 0, 0, 0.5); }
-
-/* Floor glow */
-.phone-reflection {
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%) scaleY(-0.4);
-  width: 260px;
-  height: 80px;
-  background: linear-gradient(180deg, var(--cell-glow, rgba(207, 188, 255, 0.18)), transparent);
-  filter: blur(20px);
-  opacity: 0.7;
-  z-index: -1;
-}
-
 /* ---- Hover actions ---- */
 .mockup-actions {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 12px;
+  right: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -729,16 +595,6 @@ body::before {
 }
 .icon-btn:active { transform: scale(0.92); }
 .icon-btn svg { width: 18px; height: 18px; }
-
-/* Spotlight behind each cell */
-.mockup-cell::before {
-  content: '';
-  position: absolute;
-  inset: -40px;
-  background: radial-gradient(ellipse at center, var(--cell-glow, rgba(207, 188, 255, 0.12)), transparent 60%);
-  z-index: -1;
-  pointer-events: none;
-}
 
 /* ============================================================
    SNACKBAR (M3)
@@ -825,7 +681,7 @@ body::before {
       </div>
       <div class="app-titles">
         <h1>Pixel Mock Studio</h1>
-        <p>Animated Google Pixel 10 mockups from your photos & videos</p>
+        <p>Clean Google Pixel 10 mockups from your photos & videos</p>
       </div>
     </div>
     <div class="assist-chip">
@@ -856,32 +712,12 @@ body::before {
   <section class="controls-bar" id="controlsBar">
     <div class="controls-row">
       <div class="control-group">
-        <label for="animSelect">Animation</label>
-        <select class="m3-select" id="animSelect">
-          <option value="tilt" selected>Tilt on Hover</option>
-          <option value="rotate">3D Rotate</option>
-          <option value="float">Float &amp; Sway</option>
-          <option value="showcase">Showcase Reveal</option>
-          <option value="static">Static Tilt</option>
-        </select>
-      </div>
-      <div class="control-group">
         <label for="frameSelect">Frame Color</label>
         <select class="m3-select" id="frameSelect">
           <option value="obsidian" selected>Obsidian</option>
           <option value="porcelain">Porcelain</option>
           <option value="rose">Rose</option>
           <option value="hazel">Hazel</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label for="glowSelect">Background Glow</label>
-        <select class="m3-select" id="glowSelect">
-          <option value="purple" selected>Violet</option>
-          <option value="sunset">Sunset</option>
-          <option value="ocean">Ocean</option>
-          <option value="emerald">Emerald</option>
-          <option value="mono">Mono</option>
         </select>
       </div>
       <div class="control-group" style="margin-left:auto;">
@@ -915,21 +751,41 @@ body::before {
 
 <script>
 /* ============================================================
+   PIXEL MOCK STUDIO — Static, WYSIWYG mockups
+
+   Design principle: what you see in the preview is EXACTLY what
+   you get in the downloaded PNG. Both the on-screen phone and
+   the exported PNG are drawn from the same pixel-perfect spec:
+   - Phone: 280×580, 38px outer radius, 7px bezel, 32px screen radius
+   - Image: object-fit: cover (calculated identically for CSS + canvas)
+   - No 3D transforms, no html2canvas
+   ============================================================ */
+
+/* Phone spec — single source of truth for both preview and export */
+const PHONE_SPEC = {
+  width: 280,
+  height: 580,
+  outerRadius: 38,
+  bezel: 7,
+  screenRadius: 32,
+  punchHole: { cx: 140, cy: 22, r: 5 },
+  buttons: { right: 280, powerY: 162, powerH: 70, volumeY: 244, volumeH: 50, w: 4 },
+  shadow: '0 30px 60px rgba(0,0,0,0.55), 0 12px 24px rgba(0,0,0,0.4)',
+};
+
+const FRAME_GRADIENTS = {
+  obsidian:  ['#2a2a2e', '#0f0f12'],
+  porcelain: ['#f5f5f0', '#d4d4cc'],
+  rose:      ['#e8a5b8', '#b86d80'],
+  hazel:     ['#c9b896', '#8a7858'],
+};
+
+/* ============================================================
    State
    ============================================================ */
 const state = {
   files: [],
-  animation: 'tilt',
   frame: 'obsidian',
-  glow: 'purple',
-};
-
-const GLOW_COLORS = {
-  purple:  'rgba(207, 188, 255, 0.20)',
-  sunset:  'rgba(244, 180, 138, 0.20)',
-  ocean:   'rgba(159, 213, 255, 0.20)',
-  emerald: 'rgba(168, 240, 200, 0.20)',
-  mono:    'rgba(255, 255, 255, 0.10)',
 };
 
 /* ============================================================
@@ -939,9 +795,7 @@ const uploadCard     = document.getElementById('uploadCard');
 const fileInput      = document.getElementById('fileInput');
 const gallery        = document.getElementById('gallery');
 const controlsBar    = document.getElementById('controlsBar');
-const animSelect     = document.getElementById('animSelect');
 const frameSelect    = document.getElementById('frameSelect');
-const glowSelect     = document.getElementById('glowSelect');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const clearAllBtn    = document.getElementById('clearAllBtn');
 const snackbarContainer = document.getElementById('snackbarContainer');
@@ -1005,9 +859,8 @@ function renderGallery() {
 
 function buildMockupCell(item, idx) {
   const cell = document.createElement('div');
-  cell.className = 'mockup-cell anim-' + state.animation;
+  cell.className = 'mockup-cell';
   cell.dataset.id = item.id;
-  cell.style.setProperty('--cell-glow', GLOW_COLORS[state.glow]);
   cell.style.animationDelay = (idx * 0.08) + 's';
 
   const mediaEl = item.type === 'video'
@@ -1016,28 +869,16 @@ function buildMockupCell(item, idx) {
 
   cell.innerHTML = `
     <div class="mockup-stage">
-      <div class="phone">
-        <div class="phone-face frame-${state.frame}">
-          <div class="phone-screen">
-            ${mediaEl}
-            <div class="punch-hole"></div>
-          </div>
-        </div>
-        <div class="phone-back frame-${state.frame}">
-          <div class="camera-bar">
-            <div class="camera-lens"></div>
-            <div class="camera-lens"></div>
-            <div class="camera-lens"></div>
-            <div class="camera-flash"></div>
-          </div>
-          <div class="google-logo">G</div>
-        </div>
-        <div class="phone-buttons">
-          <div class="btn-power"></div>
-          <div class="btn-volume"></div>
+      <div class="phone frame-${state.frame}">
+        <div class="phone-screen">
+          ${mediaEl}
+          <div class="punch-hole"></div>
         </div>
       </div>
-      <div class="phone-reflection"></div>
+      <div class="phone-buttons">
+        <div class="btn-power"></div>
+        <div class="btn-volume"></div>
+      </div>
     </div>
     <div class="mockup-actions">
       <button class="icon-btn" title="Download PNG" data-action="download" aria-label="Download">
@@ -1049,42 +890,16 @@ function buildMockupCell(item, idx) {
     </div>
   `;
 
-  if (state.animation === 'tilt') {
-    attachTilt(cell.querySelector('.mockup-stage'), cell);
-  }
-
   cell.querySelectorAll('.icon-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
-      if (action === 'download') downloadMockup(cell, item.name);
+      if (action === 'download') downloadMockup(item);
       if (action === 'remove')   removeMockup(item.id);
     });
   });
 
   return cell;
-}
-
-/* ============================================================
-   Tilt on hover
-   ============================================================ */
-function attachTilt(stage, cell) {
-  const maxTilt = 16;
-  let rafId = null;
-  cell.addEventListener('mousemove', (e) => {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(() => {
-      const rect = cell.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width  - 0.5;
-      const y = (e.clientY - rect.top)  / rect.height - 0.5;
-      stage.style.transform =
-        `rotateY(${x * maxTilt}deg) rotateX(${-y * maxTilt}deg) translateZ(20px)`;
-    });
-  });
-  cell.addEventListener('mouseleave', () => {
-    if (rafId) cancelAnimationFrame(rafId);
-    stage.style.transform = '';
-  });
 }
 
 /* ============================================================
@@ -1101,99 +916,180 @@ function removeMockup(id) {
 /* ============================================================
    Download as PNG
 
-   html2canvas does NOT support `backface-visibility: hidden` with
-   3D transforms — it would render both the front AND back of the
-   phone overlapping each other, producing the "weird model" bug.
-   Fix: render a clean, static, FRONT-ONLY phone off-screen and
-   capture that. Guarantees a clean front-face shot every time.
+   Draws the phone directly on a <canvas> using the SAME spec as
+   the on-screen preview. This guarantees:
+   - No image stretching (we calculate cover-fit manually)
+   - No mismatched phone shape
+   - No external libraries
    ============================================================ */
-async function downloadMockup(cell, baseName) {
-  const item = state.files.find(f => f.id === cell.dataset.id);
-  if (!item) return;
-
+async function downloadMockup(item) {
   showSnackbar('Rendering PNG…');
 
-  // Build a clean off-screen export stage: front-only, no 3D rotation,
-  // just a slight 2D tilt for depth (transform: skew-free).
-  const exportRoot = document.createElement('div');
-  exportRoot.style.cssText = `
-    position: fixed;
-    left: -10000px;
-    top: 0;
-    width: 520px;
-    padding: 60px;
-    background: transparent;
-    pointer-events: none;
-    z-index: -1;
-  `;
-
-  const mediaHTML = item.type === 'video'
-    ? `<img src="${item.videoFrame || item.url}" alt="" />`
-    : `<img src="${item.url}" alt="" />`;
-
-  exportRoot.innerHTML = `
-    <div style="
-      width: 280px;
-      height: 580px;
-      margin: 0 auto;
-      position: relative;
-      transform: perspective(1200px) rotateY(-6deg) rotateX(3deg);
-      transform-style: preserve-3d;
-      filter: drop-shadow(0 30px 40px rgba(0,0,0,0.5));
-    ">
-      <div class="phone-face frame-${state.frame}" style="position:absolute; inset:0; border-radius:38px;">
-        <div class="phone-screen" style="border-radius:32px;">
-          ${mediaHTML}
-          <div class="punch-hole"></div>
-        </div>
-      </div>
-      <div class="phone-buttons">
-        <div class="btn-power"></div>
-        <div class="btn-volume"></div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(exportRoot);
-
-  // For videos: grab a poster frame first so we export a real frame, not frame 0
-  if (item.type === 'video' && !item.videoFrame) {
-    try {
-      item.videoFrame = await captureVideoFrame(item.url);
-      const img = exportRoot.querySelector('img');
-      img.src = item.videoFrame;
-    } catch (e) { /* fall back to original video element */ }
-  }
-
-  // Wait for the export image to load
-  const exportImg = exportRoot.querySelector('img');
-  if (exportImg && !exportImg.complete) {
-    await new Promise(res => { exportImg.onload = res; exportImg.onerror = res; });
-  }
-  // Small delay for layout
-  await new Promise(r => setTimeout(r, 100));
-
+  // Load the source image (or extract a video frame)
+  let img;
   try {
-    const canvas = await html2canvas(exportRoot, {
-      backgroundColor: null,
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
+    const src = item.type === 'video'
+      ? (item.videoFrame || (item.videoFrame = await captureVideoFrame(item.url)))
+      : item.url;
+    img = await loadImage(src);
+  } catch (err) {
+    console.error(err);
+    showSnackbar('Could not load image', 'error');
+    return;
+  }
+
+  // Render at 3x for crisp output
+  const SCALE = 3;
+  const PAD = 40; // padding around phone so shadow isn't clipped
+  const W = PHONE_SPEC.width  + PAD * 2;
+  const H = PHONE_SPEC.height + PAD * 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = W * SCALE;
+  canvas.height = H * SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(SCALE, SCALE);
+
+  // Translate to padded origin
+  ctx.translate(PAD, PAD);
+
+  // --- 1. Drop shadow under the phone ---
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 24;
+  drawRoundRect(ctx, 0, 0, PHONE_SPEC.width, PHONE_SPEC.height, PHONE_SPEC.outerRadius);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+  ctx.restore();
+
+  // --- 2. Phone body (frame gradient) ---
+  const [c1, c2] = FRAME_GRADIENTS[state.frame];
+  const grad = ctx.createLinearGradient(0, 0, PHONE_SPEC.width, PHONE_SPEC.height);
+  grad.addColorStop(0, c1);
+  grad.addColorStop(1, c2);
+  drawRoundRect(ctx, 0, 0, PHONE_SPEC.width, PHONE_SPEC.height, PHONE_SPEC.outerRadius);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Subtle inner highlight on the frame
+  ctx.save();
+  drawRoundRect(ctx, 0, 0, PHONE_SPEC.width, PHONE_SPEC.height, PHONE_SPEC.outerRadius);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, 0.5, 0.5, PHONE_SPEC.width - 1, PHONE_SPEC.height - 1, PHONE_SPEC.outerRadius - 0.5);
+  ctx.stroke();
+  ctx.restore();
+
+  // --- 3. Screen background (black) ---
+  const bezel = PHONE_SPEC.bezel;
+  const sx = bezel, sy = bezel;
+  const sw = PHONE_SPEC.width  - bezel * 2;
+  const sh = PHONE_SPEC.height - bezel * 2;
+
+  drawRoundRect(ctx, sx, sy, sw, sh, PHONE_SPEC.screenRadius);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  // --- 4. User image with object-fit: cover math ---
+  // Calculate the cover-fit crop manually so the export matches
+  // what CSS object-fit:cover renders in the preview.
+  const screenAspect = sw / sh;
+  const imgAspect = img.width / img.height;
+  let drawW, drawH, drawX, drawY;
+  if (imgAspect > screenAspect) {
+    // Image is wider — crop sides
+    drawH = sh;
+    drawW = sh * imgAspect;
+    drawX = sx - (drawW - sw) / 2;
+    drawY = sy;
+  } else {
+    // Image is taller — crop top/bottom
+    drawW = sw;
+    drawH = sw / imgAspect;
+    drawX = sx;
+    drawY = sy - (drawH - sh) / 2;
+  }
+
+  // Clip to screen rounded rect, then draw the image
+  ctx.save();
+  drawRoundRect(ctx, sx, sy, sw, sh, PHONE_SPEC.screenRadius);
+  ctx.clip();
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  ctx.restore();
+
+  // Subtle inner shadow on screen edge
+  ctx.save();
+  drawRoundRect(ctx, sx, sy, sw, sh, PHONE_SPEC.screenRadius);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, sx + 0.5, sy + 0.5, sw - 1, sh - 1, PHONE_SPEC.screenRadius - 0.5);
+  ctx.stroke();
+  ctx.restore();
+
+  // --- 5. Punch-hole front camera ---
+  ctx.beginPath();
+  ctx.arc(PHONE_SPEC.punchHole.cx, PHONE_SPEC.punchHole.cy, PHONE_SPEC.punchHole.r, 0, Math.PI * 2);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // --- 6. Side buttons ---
+  const btnGrad = ctx.createLinearGradient(PHONE_SPEC.buttons.right, 0,
+                                            PHONE_SPEC.buttons.right + PHONE_SPEC.buttons.w, 0);
+  btnGrad.addColorStop(0, '#1a1a1d');
+  btnGrad.addColorStop(1, '#3a3a3e');
+  ctx.fillStyle = btnGrad;
+  // Power button
+  drawRoundRect(ctx, PHONE_SPEC.buttons.right, PHONE_SPEC.buttons.powerY,
+                    PHONE_SPEC.buttons.w, PHONE_SPEC.buttons.powerH, 2);
+  ctx.fill();
+  // Volume button
+  drawRoundRect(ctx, PHONE_SPEC.buttons.right, PHONE_SPEC.buttons.volumeY,
+                    PHONE_SPEC.buttons.w, PHONE_SPEC.buttons.volumeH, 2);
+  ctx.fill();
+
+  // --- Trigger download ---
+  try {
     const link = document.createElement('a');
-    link.download = baseName.replace(/\.[^.]+$/, '') + '-pixel10.png';
+    link.download = item.name.replace(/\.[^.]+$/, '') + '-pixel10.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
     showSnackbar('Downloaded');
   } catch (err) {
     console.error(err);
     showSnackbar('Export failed', 'error');
-  } finally {
-    exportRoot.remove();
   }
 }
 
-// Capture a representative frame from a video as a data URL
+/* Helper: draw a rounded-rectangle path */
+function drawRoundRect(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+/* Helper: load an image and resolve when done */
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/* Capture a representative frame from a video as a data URL */
 function captureVideoFrame(videoUrl) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
@@ -1202,16 +1098,15 @@ function captureVideoFrame(videoUrl) {
     video.playsInline = true;
     video.crossOrigin = 'anonymous';
     video.addEventListener('loadeddata', () => {
-      // Jump to ~25% in to get a representative frame
       video.currentTime = Math.min(video.duration * 0.25, 1);
     }, { once: true });
     video.addEventListener('seeked', () => {
       try {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth || 1080;
-        canvas.height = video.videoHeight || 1920;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/png'));
+        const c = document.createElement('canvas');
+        c.width = video.videoWidth || 1080;
+        c.height = video.videoHeight || 1920;
+        c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/png'));
       } catch (e) { reject(e); }
     }, { once: true });
     video.addEventListener('error', reject, { once: true });
@@ -1220,11 +1115,10 @@ function captureVideoFrame(videoUrl) {
 
 downloadAllBtn.addEventListener('click', async () => {
   if (!state.files.length) return;
-  const cells = gallery.querySelectorAll('.mockup-cell');
   downloadAllBtn.disabled = true;
   downloadAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg> Exporting…';
-  for (let i = 0; i < cells.length; i++) {
-    await downloadMockup(cells[i], state.files[i].name);
+  for (const item of state.files) {
+    await downloadMockup(item);
     await new Promise(r => setTimeout(r, 400));
   }
   downloadAllBtn.disabled = false;
@@ -1244,16 +1138,14 @@ clearAllBtn.addEventListener('click', () => {
 /* ============================================================
    Control changes
    ============================================================ */
-animSelect.addEventListener('change', (e) => { state.animation = e.target.value; renderGallery(); });
 frameSelect.addEventListener('change', (e) => { state.frame = e.target.value; renderGallery(); });
-glowSelect.addEventListener('change', (e) => { state.glow = e.target.value; renderGallery(); });
 
 /* ============================================================
    Snackbar
    ============================================================ */
 function showSnackbar(message, type = '') {
   const snack = document.createElement('div');
-  snack.className = 'snackbar ' + (type === 'error' ? 'snackbar-error' : '');
+  snack.className = 'snackbar';
   if (type === 'error') {
     snack.style.background = 'var(--md-sys-color-error-container)';
     snack.style.color = 'var(--md-sys-color-on-error-container)';
