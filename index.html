@@ -3,274 +3,456 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Pixel Mock Studio — Animated Google Pixel 10 Mockups</title>
+<title>Pixel Mock Studio — M3 Expressive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..900&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 /* ============================================================
-   Pixel Mock Studio
-   Animated Google Pixel 10 mockups from your photos & videos
+   PIXEL MOCK STUDIO — Material 3 Expressive
+   Token-driven · spring motion · expressive shape scale
    ============================================================ */
 
+/* ---- M3 Color tokens (dark scheme, violet seed) ---- */
 :root {
-  --bg-0: #07070b;
-  --bg-1: #0d0d18;
-  --bg-2: #15152a;
-  --panel: rgba(255, 255, 255, 0.04);
-  --panel-border: rgba(255, 255, 255, 0.08);
-  --text: #f4f4f7;
-  --text-dim: #a6a6b8;
-  --text-faint: #6b6b80;
-  --accent: #8b5cf6;
-  --accent-2: #ec4899;
-  --accent-3: #06b6d4;
-  --success: #10b981;
-  --radius: 14px;
-  --radius-sm: 8px;
-  --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.4);
-  --shadow-strong: 0 30px 80px rgba(0, 0, 0, 0.6);
+  /* Primary */
+  --md-sys-color-primary: #cfbcff;
+  --md-sys-color-on-primary: #381e72;
+  --md-sys-color-primary-container: #4f378a;
+  --md-sys-color-on-primary-container: #ecdcff;
+  --md-sys-color-primary-fixed: #eaddff;
+  --md-sys-color-primary-fixed-dim: #cfbcff;
+
+  /* Secondary */
+  --md-sys-color-secondary: #d0c3ea;
+  --md-sys-color-on-secondary: #352e4b;
+  --md-sys-color-secondary-container: #4c4463;
+  --md-sys-color-on-secondary-container: #ecdcff;
+
+  /* Tertiary */
+  --md-sys-color-tertiary: #f4b4ce;
+  --md-sys-color-on-tertiary: #4c2539;
+  --md-sys-color-tertiary-container: #663b50;
+  --md-sys-color-on-tertiary-container: #ffd9e3;
+
+  /* Error */
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  /* Surfaces (dark) */
+  --md-sys-color-surface: #141218;
+  --md-sys-color-on-surface: #e6e0e9;
+  --md-sys-color-surface-dim: #141218;
+  --md-sys-color-surface-bright: #3b383f;
+  --md-sys-color-surface-container-lowest: #0f0d13;
+  --md-sys-color-surface-container-low: #1c1b1f;
+  --md-sys-color-surface-container: #201f23;
+  --md-sys-color-surface-container-high: #2b292e;
+  --md-sys-color-surface-container-highest: #36343a;
+  --md-sys-color-on-surface-variant: #c9c5d0;
+  --md-sys-color-outline: #948f99;
+  --md-sys-color-outline-variant: #49454e;
+
+  /* Inverse */
+  --md-sys-color-inverse-surface: #e6e0e9;
+  --md-sys-color-inverse-on-surface: #322f35;
+  --md-sys-color-inverse-primary: #6a4ea3;
+
+  /* M3 Expressive shape scale */
+  --md-sys-shape-corner-none: 0;
+  --md-sys-shape-corner-xs: 4px;
+  --md-sys-shape-corner-sm: 8px;
+  --md-sys-shape-corner-md: 12px;
+  --md-sys-shape-corner-lg: 16px;
+  --md-sys-shape-corner-xl: 28px;
+  --md-sys-shape-corner-2xl: 36px;
+  --md-sys-shape-corner-full: 9999px;
+
+  /* M3 Elevation (dark) — tonal, not just shadow */
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --md-sys-elevation-2: 0 2px 6px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+  --md-sys-elevation-3: 0 6px 12px rgba(0,0,0,0.45), 0 4px 6px rgba(0,0,0,0.3);
+  --md-sys-elevation-4: 0 12px 24px rgba(0,0,0,0.5), 0 6px 8px rgba(0,0,0,0.3);
+  --md-sys-elevation-5: 0 18px 36px rgba(0,0,0,0.55), 0 10px 14px rgba(0,0,0,0.3);
+
+  /* M3 Expressive motion — spring-based easings */
+  --md-sys-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-spring: cubic-bezier(0.45, 1.4, 0.4, 1);
+  --md-sys-motion-easing-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --md-sys-motion-duration-short1: 100ms;
+  --md-sys-motion-duration-short2: 150ms;
+  --md-sys-motion-duration-short3: 200ms;
+  --md-sys-motion-duration-short4: 250ms;
+  --md-sys-motion-duration-medium1: 300ms;
+  --md-sys-motion-duration-medium2: 400ms;
+  --md-sys-motion-duration-medium3: 500ms;
+  --md-sys-motion-duration-long1: 600ms;
+  --md-sys-motion-duration-long2: 800ms;
+
+  /* M3 Type scale (Roboto Flex) */
+  --md-sys-typescale-display-large: 600 57px/64px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-display-medium: 600 48px/56px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-display-small: 600 36px/44px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-headline-large: 600 32px/40px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-headline-medium: 600 28px/36px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-headline-small: 600 24px/32px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-large: 500 22px/28px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-medium: 500 16px/24px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-title-small: 500 14px/20px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-body-large: 400 16px/24px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-body-medium: 400 14px/20px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-body-small: 400 12px/16px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-label-large: 500 14px/20px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-label-medium: 500 12px/16px 'Roboto Flex', sans-serif;
+  --md-sys-typescale-label-small: 500 11px/16px 'Roboto Flex', sans-serif;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  background: var(--bg-0);
-  color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: 'Roboto Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font: var(--md-sys-typescale-body-large);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
 
-/* Animated ambient background */
+/* ---- Ambient decorative gradient (M3E style: subtle, behind everything) ---- */
 body::before {
   content: '';
   position: fixed;
-  inset: -20%;
-  background:
-    radial-gradient(ellipse 600px 400px at 20% 20%, rgba(139, 92, 246, 0.18), transparent 60%),
-    radial-gradient(ellipse 500px 600px at 80% 60%, rgba(236, 72, 153, 0.14), transparent 60%),
-    radial-gradient(ellipse 700px 400px at 50% 90%, rgba(6, 182, 212, 0.12), transparent 60%);
-  filter: blur(40px);
-  z-index: -2;
-  animation: ambientShift 18s ease-in-out infinite alternate;
-}
-body::after {
-  content: '';
-  position: fixed;
   inset: 0;
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.025) 1px, transparent 0);
-  background-size: 32px 32px;
-  z-index: -1;
+  background:
+    radial-gradient(ellipse 800px 500px at 15% 10%, rgba(207, 188, 255, 0.08), transparent 60%),
+    radial-gradient(ellipse 600px 500px at 85% 30%, rgba(244, 180, 206, 0.06), transparent 60%),
+    radial-gradient(ellipse 700px 400px at 50% 100%, rgba(207, 188, 255, 0.05), transparent 60%);
+  z-index: -2;
   pointer-events: none;
+  animation: ambientFloat 24s ease-in-out infinite alternate;
 }
-@keyframes ambientShift {
-  0%   { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(40px, -30px) scale(1.05); }
+@keyframes ambientFloat {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(30px, -20px); }
 }
 
-/* ============================== HEADER ============================== */
-.app-header {
-  padding: 40px 24px 16px;
-  text-align: center;
-  max-width: 1400px;
+/* ============================================================
+   LAYOUT CONTAINER
+   ============================================================ */
+.app-shell {
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 32px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
-.app-badge {
+
+/* ============================================================
+   TOP APP BAR (M3E style: title + chip)
+   ============================================================ */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.app-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--md-sys-shape-corner-md);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: var(--md-sys-typescale-headline-small);
+  box-shadow: var(--md-sys-elevation-1);
+}
+.app-titles h1 {
+  font: var(--md-sys-typescale-headline-medium);
+  letter-spacing: -0.5px;
+  color: var(--md-sys-color-on-surface);
+}
+.app-titles p {
+  font: var(--md-sys-typescale-body-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  margin-top: 2px;
+}
+
+/* M3E status chip */
+.assist-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  border-radius: 100px;
-  font-size: 12px;
-  color: var(--text-dim);
-  letter-spacing: 0.5px;
-  margin-bottom: 18px;
+  padding: 8px 16px;
+  height: 36px;
+  border-radius: var(--md-sys-shape-corner-sm);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-label-large);
+  cursor: default;
+  transition: background var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
-.app-badge .dot {
-  width: 6px; height: 6px;
-  background: var(--success);
+.assist-chip:hover { background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent); }
+.assist-chip .dot {
+  width: 8px; height: 8px;
+  background: var(--md-sys-color-tertiary);
   border-radius: 50%;
-  box-shadow: 0 0 10px var(--success);
-}
-.app-title {
-  font-size: clamp(32px, 5vw, 52px);
-  font-weight: 800;
-  letter-spacing: -1.5px;
-  background: linear-gradient(135deg, #fff 0%, #c4b5fd 50%, #f9a8d4 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  margin-bottom: 10px;
-}
-.app-subtitle {
-  color: var(--text-dim);
-  font-size: 16px;
-  max-width: 640px;
-  margin: 0 auto;
-  line-height: 1.5;
+  align-self: center;
 }
 
-/* ============================== UPLOAD ZONE ============================== */
-.upload-wrap {
-  max-width: 900px;
-  margin: 32px auto;
-  padding: 0 24px;
-}
-.upload-zone {
-  position: relative;
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 24px;
+/* ============================================================
+   UPLOAD CARD (M3E filled card with drag state)
+   ============================================================ */
+.upload-card {
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-xl);
   padding: 56px 32px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.04));
-  backdrop-filter: blur(10px);
+  transition:
+    background var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized),
+    box-shadow var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized),
+    transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-spring);
+  border: 2px dashed transparent;
+  position: relative;
+  overflow: hidden;
 }
-.upload-zone:hover {
-  border-color: var(--accent);
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.05), rgba(236, 72, 153, 0.05));
+.upload-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px dashed var(--md-sys-color-outline-variant);
+  pointer-events: none;
+  transition: border-color var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+.upload-card:hover {
+  background: var(--md-sys-color-surface-container-highest);
+  box-shadow: var(--md-sys-elevation-2);
   transform: translateY(-2px);
 }
-.upload-zone.dragging {
-  border-color: var(--accent-2);
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.12), rgba(236, 72, 153, 0.12));
+.upload-card:hover::before { border-color: var(--md-sys-color-primary); }
+.upload-card.dragging {
+  background: var(--md-sys-color-primary-container);
   transform: scale(1.01);
+  box-shadow: var(--md-sys-elevation-3);
 }
-.upload-icon {
-  width: 72px; height: 72px;
-  margin: 0 auto 20px;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  border-radius: 22px;
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
-  font-size: 32px;
+.upload-card.dragging::before { border-color: var(--md-sys-color-primary); }
+
+.upload-icon-wrap {
+  width: 80px; height: 80px;
+  margin: 0 auto 24px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-spring);
 }
+.upload-card:hover .upload-icon-wrap { transform: scale(1.08) rotate(-4deg); }
+.upload-icon-wrap svg { width: 36px; height: 36px; }
+
 .upload-title {
-  font-size: 20px;
-  font-weight: 700;
+  font: var(--md-sys-typescale-title-large);
+  color: var(--md-sys-color-on-surface);
   margin-bottom: 8px;
 }
-.upload-hint {
-  color: var(--text-dim);
-  font-size: 14px;
-  margin-bottom: 18px;
+.upload-subtitle {
+  font: var(--md-sys-typescale-body-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 24px;
 }
 .upload-formats {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
 }
 .format-chip {
-  font-size: 11px;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 100px;
-  color: var(--text-faint);
+  font: var(--md-sys-typescale-label-small);
+  padding: 4px 12px;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  border-radius: var(--md-sys-shape-corner-full);
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
+
 #fileInput { display: none; }
 
-/* ============================== CONTROLS ============================== */
-.controls {
-  max-width: 1400px;
-  margin: 0 auto 28px;
-  padding: 0 24px;
+/* ============================================================
+   CONTROLS ROW (M3E segmented buttons + dropdowns)
+   ============================================================ */
+.controls-bar {
   display: none;
+  flex-direction: column;
   gap: 16px;
-  flex-wrap: wrap;
-  align-items: center;
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: var(--md-sys-shape-corner-xl);
+  padding: 20px 24px;
+  box-shadow: var(--md-sys-elevation-1);
 }
-.controls.visible { display: flex; }
+.controls-bar.visible {
+  display: flex;
+  animation: slideDown var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized);
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.controls-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  min-width: 180px;
+  gap: 8px;
+  min-width: 0;
 }
-.control-label {
-  font-size: 11px;
-  color: var(--text-faint);
+.control-group label {
+  font: var(--md-sys-typescale-label-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  letter-spacing: 0.5px;
+  padding-left: 16px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 600;
+  font-weight: 500;
 }
-.control-select, .control-color {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  color: var(--text);
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
+
+/* M3E outlined select (treated like an outlined text field) */
+.m3-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-sm);
+  padding: 0 40px 0 16px;
+  font: var(--md-sys-typescale-body-large);
   font-family: inherit;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.2s;
+  min-width: 180px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 12 12' fill='%23c9c5d0'><path d='M2 4l4 4 4-4z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  transition:
+    border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    background var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
-.control-select:hover, .control-color:hover { border-color: var(--accent); }
-.control-select:focus { border-color: var(--accent); }
-.control-color {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 50px;
-  height: 40px;
-  padding: 4px;
-  cursor: pointer;
+.m3-select:hover { border-color: var(--md-sys-color-on-surface); }
+.m3-select:focus {
+  border-color: var(--md-sys-color-primary);
+  border-width: 2px;
+  padding-right: 39px;
 }
 
-.btn {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: white;
-  border: none;
-  padding: 11px 22px;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.2s;
+/* ---- M3E Buttons ---- */
+.m3-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  padding: 0 24px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font: var(--md-sys-typescale-label-large);
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-spring);
   white-space: nowrap;
+  height: 56px;
 }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4); }
-.btn:active { transform: translateY(0); }
-.btn.secondary {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  color: var(--text);
-}
-.btn.secondary:hover { background: rgba(255, 255, 255, 0.08); }
-.btn.danger {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
-}
-.btn.danger:hover { background: rgba(239, 68, 68, 0.25); }
+.m3-btn:active { transform: scale(0.96); }
+.m3-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ============================== GALLERY ============================== */
+.m3-btn.filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+.m3-btn.filled:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 90%, white);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.m3-btn.tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.m3-btn.tonal:hover {
+  background: color-mix(in srgb, var(--md-sys-color-secondary-container) 85%, white);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.m3-btn.outlined {
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline);
+  color: var(--md-sys-color-primary);
+}
+.m3-btn.outlined:hover {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+.m3-btn.danger {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+.m3-btn.danger:hover {
+  background: color-mix(in srgb, var(--md-sys-color-error-container) 85%, white);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.m3-btn svg { width: 18px; height: 18px; }
+
+/* ============================================================
+   GALLERY GRID
+   ============================================================ */
 .gallery {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 24px 80px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 40px;
+  gap: 40px 32px;
   perspective: 1500px;
+  min-height: 0;
+  padding: 16px 0;
 }
 .gallery:empty::after {
-  content: 'Your mockups will appear here';
+  content: 'Mockups will appear here';
   grid-column: 1 / -1;
   text-align: center;
-  color: var(--text-faint);
-  padding: 80px 0;
-  font-size: 15px;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 60px 0;
+  font: var(--md-sys-typescale-body-large);
 }
 
 .mockup-cell {
@@ -278,15 +460,22 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 560px;
+  min-height: 580px;
   transform-style: preserve-3d;
+  animation: cellEnter var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-bounce) both;
+  padding: 8px;
+}
+@keyframes cellEnter {
+  from { opacity: 0; transform: translateY(30px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .mockup-stage {
   position: relative;
   transform-style: preserve-3d;
   width: 260px;
-  height: 560px;
+  height: 540px;
+  transition: transform 0.4s var(--md-sys-motion-easing-emphasized);
 }
 
 /* ---- Animation presets ---- */
@@ -297,13 +486,15 @@ body::after {
   animation: floatBob 4s ease-in-out infinite;
 }
 .anim-tilt .mockup-stage {
-  transition: transform 0.2s ease-out;
+  transform: rotateY(-6deg) rotateX(3deg);
 }
 .anim-showcase .mockup-stage {
-  animation: showcaseIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both, gentleSway 6s ease-in-out infinite 1.2s;
+  animation:
+    showcaseIn 1s var(--md-sys-motion-easing-emphasized) both,
+    gentleSway 8s ease-in-out infinite 1s;
 }
 .anim-static .mockup-stage {
-  transform: rotateY(-8deg) rotateX(4deg);
+  transform: rotateY(-10deg) rotateX(4deg);
 }
 
 @keyframes rotateY {
@@ -312,7 +503,7 @@ body::after {
 }
 @keyframes floatBob {
   0%, 100% { transform: translateY(0) rotateZ(-1deg); }
-  50%      { transform: translateY(-18px) rotateZ(1deg); }
+  50%      { transform: translateY(-16px) rotateZ(1deg); }
 }
 @keyframes showcaseIn {
   0%   { transform: rotateY(-90deg) scale(0.6); opacity: 0; }
@@ -333,13 +524,13 @@ body::after {
 .phone-face {
   position: absolute;
   inset: 0;
-  border-radius: 38px;
+  border-radius: var(--md-sys-shape-corner-xl);
   background: linear-gradient(145deg, #2a2a2e, #0f0f12);
   padding: 6px;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 30px 60px rgba(0, 0, 0, 0.5);
+    0 20px 40px rgba(0, 0, 0, 0.4);
   backface-visibility: hidden;
 }
 .phone-face.frame-obsidian { background: linear-gradient(145deg, #2a2a2e, #0f0f12); }
@@ -351,7 +542,7 @@ body::after {
   position: relative;
   width: 100%;
   height: 100%;
-  border-radius: 32px;
+  border-radius: 24px;
   overflow: hidden;
   background: #000;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.8);
@@ -367,7 +558,7 @@ body::after {
 /* Punch-hole front camera */
 .punch-hole {
   position: absolute;
-  top: 14px;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: 10px;
@@ -385,7 +576,6 @@ body::after {
   bottom: 0;
   right: -3px;
   width: 4px;
-  transform-style: preserve-3d;
 }
 .btn-power {
   position: absolute;
@@ -395,7 +585,6 @@ body::after {
   height: 70px;
   background: linear-gradient(90deg, #1a1a1d, #3a3a3e);
   border-radius: 0 2px 2px 0;
-  transform: translateZ(0);
 }
 .btn-volume {
   position: absolute;
@@ -407,18 +596,18 @@ body::after {
   border-radius: 0 2px 2px 0;
 }
 
-/* ---- Back of the phone (visible during 3D rotation) ---- */
+/* ---- Back of phone ---- */
 .phone-back {
   position: absolute;
   inset: 0;
-  border-radius: 38px;
+  border-radius: var(--md-sys-shape-corner-xl);
   background: linear-gradient(145deg, #1a1a1d, #050507);
   transform: rotateY(180deg);
   backface-visibility: hidden;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.06),
     0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 30px 60px rgba(0, 0, 0, 0.5);
+    0 20px 40px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
 .phone-back.frame-obsidian { background: linear-gradient(145deg, #1a1a1d, #050507); }
@@ -426,7 +615,7 @@ body::after {
 .phone-back.frame-rose { background: linear-gradient(145deg, #d99cb0, #a85a70); }
 .phone-back.frame-hazel { background: linear-gradient(145deg, #b8a785, #786a4f); }
 
-/* Camera bar (Pixel 10 signature) */
+/* Camera bar */
 .camera-bar {
   position: absolute;
   top: 28px;
@@ -435,7 +624,7 @@ body::after {
   width: 80%;
   height: 56px;
   background: linear-gradient(180deg, #0a0a0c, #1a1a1d);
-  border-radius: 28px;
+  border-radius: var(--md-sys-shape-corner-full);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -478,14 +667,14 @@ body::after {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 24px;
+  font: var(--md-sys-typescale-headline-small);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.5);
   letter-spacing: -1px;
 }
 .phone-back.frame-porcelain .google-logo { color: rgba(0, 0, 0, 0.5); }
 
-/* ---- Floor reflection ---- */
+/* Floor glow */
 .phone-reflection {
   position: absolute;
   bottom: -10px;
@@ -493,53 +682,70 @@ body::after {
   transform: translateX(-50%) scaleY(-0.4);
   width: 260px;
   height: 80px;
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.15), transparent);
+  background: linear-gradient(180deg, var(--cell-glow, rgba(207, 188, 255, 0.18)), transparent);
   filter: blur(20px);
-  opacity: 0.6;
+  opacity: 0.7;
   z-index: -1;
 }
 
-/* ---- Mockup actions (hover overlay) ---- */
+/* ---- Hover actions ---- */
 .mockup-actions {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transform: translateX(8px);
+  transition:
+    opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-spring);
   z-index: 10;
 }
-.mockup-cell:hover .mockup-actions { opacity: 1; }
-.action-btn {
+.mockup-cell:hover .mockup-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+.icon-btn {
   width: 36px; height: 36px;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: white;
+  background: var(--md-sys-color-surface-container-highest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-family: inherit;
+  transition:
+    background var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-spring);
 }
-.action-btn:hover { background: var(--accent); border-color: var(--accent); }
+.icon-btn:hover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  transform: scale(1.08);
+}
+.icon-btn:active { transform: scale(0.92); }
+.icon-btn svg { width: 18px; height: 18px; }
 
-/* ============================== EMPTY STATE ============================== */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-faint);
-  grid-column: 1 / -1;
+/* Spotlight behind each cell */
+.mockup-cell::before {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(ellipse at center, var(--cell-glow, rgba(207, 188, 255, 0.12)), transparent 60%);
+  z-index: -1;
+  pointer-events: none;
 }
 
-/* ============================== TOAST ============================== */
-.toast-container {
+/* ============================================================
+   SNACKBAR (M3)
+   ============================================================ */
+.snackbar-container {
   position: fixed;
-  bottom: 30px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -547,87 +753,94 @@ body::after {
   flex-direction: column;
   gap: 8px;
   align-items: center;
+  pointer-events: none;
 }
-.toast {
-  background: rgba(20, 20, 35, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--panel-border);
-  padding: 12px 20px;
-  border-radius: 100px;
-  font-size: 14px;
-  color: var(--text);
-  box-shadow: var(--shadow-soft);
-  animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
+.snackbar {
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  padding: 14px 20px;
+  border-radius: var(--md-sys-shape-corner-xs);
+  font: var(--md-sys-typescale-label-large);
+  box-shadow: var(--md-sys-elevation-3);
+  animation: snackbarIn var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized),
+             snackbarOut var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized-accelerate) 2.7s forwards;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
-.toast.success { border-color: rgba(16, 185, 129, 0.4); }
-.toast.error { border-color: rgba(239, 68, 68, 0.4); }
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(20px); }
+@keyframes snackbarIn {
+  from { opacity: 0; transform: translateY(40px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes toastOut {
-  to { opacity: 0; transform: translateY(20px); }
+@keyframes snackbarOut {
+  to { opacity: 0; transform: translateY(40px); }
 }
 
-/* ============================== FOOTER ============================== */
+/* ============================================================
+   FOOTER
+   ============================================================ */
 .app-footer {
   text-align: center;
-  padding: 30px 20px;
-  color: var(--text-faint);
-  font-size: 13px;
-  border-top: 1px solid var(--panel-border);
+  padding: 24px 20px;
+  color: var(--md-sys-color-on-surface-variant);
+  font: var(--md-sys-typescale-body-small);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  margin-top: 24px;
 }
 
-/* ============================== RESPONSIVE ============================== */
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
 @media (max-width: 640px) {
-  .app-header { padding: 28px 16px 8px; }
-  .upload-zone { padding: 40px 20px; }
-  .gallery { grid-template-columns: 1fr; gap: 30px; padding: 0 16px 60px; }
-  .mockup-cell { min-height: 580px; }
+  .app-shell { padding: 20px 16px 60px; gap: 24px; }
+  .top-bar-left { gap: 12px; }
+  .app-logo { width: 40px; height: 40px; }
+  .app-titles h1 { font: var(--md-sys-typescale-headline-small); }
+  .upload-card { padding: 36px 20px; }
+  .gallery { grid-template-columns: 1fr; gap: 24px; }
+  .controls-bar { padding: 16px; }
+  .controls-row { gap: 12px; }
+  .m3-select { min-width: 140px; flex: 1; }
 }
 
-/* Carousel scene */
-.scene-carousel .gallery {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px;
-  perspective: 1200px;
-}
-.scene-carousel .mockup-cell {
-  min-height: 560px;
-}
-
-/* Spotlight background per cell */
-.spotlight-bg::before {
-  content: '';
-  position: absolute;
-  inset: -40px;
-  background: radial-gradient(ellipse at center, var(--cell-glow, rgba(139, 92, 246, 0.18)), transparent 60%);
-  z-index: -1;
-  pointer-events: none;
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>
 </head>
 <body>
 
-<header class="app-header">
-  <div class="app-badge">
-    <span class="dot"></span>
-    <span>Pixel 10 Mockup Studio</span>
-  </div>
-  <h1 class="app-title">Pixel Mock Studio</h1>
-  <p class="app-subtitle">Drop your photos or screen recordings — get beautifully animated Google Pixel 10 mockups in seconds.</p>
-</header>
+<div class="app-shell">
 
-<section class="upload-wrap">
-  <label class="upload-zone" id="uploadZone" for="fileInput">
-    <div class="upload-icon">📷</div>
+  <!-- Top App Bar -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <div class="app-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17 2H7C5.9 2 5 2.9 5 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 19c-.83 0-1.5-.67-1.5-1.5S11.17 18 12 18s1.5.67 1.5 1.5S12.83 21 12 21zm5-4H7V5h10v12z"/></svg>
+      </div>
+      <div class="app-titles">
+        <h1>Pixel Mock Studio</h1>
+        <p>Animated Google Pixel 10 mockups from your photos & videos</p>
+      </div>
+    </div>
+    <div class="assist-chip">
+      <span class="dot"></span>
+      <span>Pixel 10 Model</span>
+    </div>
+  </header>
+
+  <!-- Upload Card -->
+  <section class="upload-card" id="uploadCard">
+    <div class="upload-icon-wrap" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 12h-4l3 3v-1h2v-2zm-6-3.5L9 8 6 11.5h2V14h2v-2.5h2zm5 0L14 8l-3 3.5h2V14h2v-2.5h2z"/></svg>
+    </div>
     <div class="upload-title">Drop photos or videos here</div>
-    <div class="upload-hint">or click to browse — multiple files supported</div>
+    <div class="upload-subtitle">or click to browse · multiple files supported</div>
     <div class="upload-formats">
       <span class="format-chip">JPG</span>
       <span class="format-chip">PNG</span>
@@ -637,55 +850,67 @@ body::after {
       <span class="format-chip">MOV</span>
     </div>
     <input type="file" id="fileInput" accept="image/*,video/*" multiple />
-  </label>
-</section>
+  </section>
 
-<section class="controls" id="controls">
-  <div class="control-group">
-    <label class="control-label">Animation</label>
-    <select class="control-select" id="animSelect">
-      <option value="rotate">3D Rotate</option>
-      <option value="float">Float &amp; Sway</option>
-      <option value="tilt" selected>Tilt on Hover</option>
-      <option value="showcase">Showcase Reveal</option>
-      <option value="static">Static Tilt</option>
-    </select>
-  </div>
-  <div class="control-group">
-    <label class="control-label">Frame Color</label>
-    <select class="control-select" id="frameSelect">
-      <option value="obsidian" selected>Obsidian</option>
-      <option value="porcelain">Porcelain</option>
-      <option value="rose">Rose</option>
-      <option value="hazel">Hazel</option>
-    </select>
-  </div>
-  <div class="control-group">
-    <label class="control-label">Background Glow</label>
-    <select class="control-select" id="glowSelect">
-      <option value="purple" selected>Purple Haze</option>
-      <option value="sunset">Sunset</option>
-      <option value="ocean">Ocean</option>
-      <option value="emerald">Emerald</option>
-      <option value="mono">Mono</option>
-    </select>
-  </div>
-  <div class="control-group" style="flex: 0;">
-    <label class="control-label">&nbsp;</label>
-    <button class="btn" id="downloadAllBtn">⬇ Download All</button>
-  </div>
-  <div class="control-group" style="flex: 0;">
-    <label class="control-label">&nbsp;</label>
-    <button class="btn danger" id="clearAllBtn">Clear All</button>
-  </div>
-</section>
+  <!-- Controls Bar (appears after upload) -->
+  <section class="controls-bar" id="controlsBar">
+    <div class="controls-row">
+      <div class="control-group">
+        <label for="animSelect">Animation</label>
+        <select class="m3-select" id="animSelect">
+          <option value="tilt" selected>Tilt on Hover</option>
+          <option value="rotate">3D Rotate</option>
+          <option value="float">Float &amp; Sway</option>
+          <option value="showcase">Showcase Reveal</option>
+          <option value="static">Static Tilt</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="frameSelect">Frame Color</label>
+        <select class="m3-select" id="frameSelect">
+          <option value="obsidian" selected>Obsidian</option>
+          <option value="porcelain">Porcelain</option>
+          <option value="rose">Rose</option>
+          <option value="hazel">Hazel</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="glowSelect">Background Glow</label>
+        <select class="m3-select" id="glowSelect">
+          <option value="purple" selected>Violet</option>
+          <option value="sunset">Sunset</option>
+          <option value="ocean">Ocean</option>
+          <option value="emerald">Emerald</option>
+          <option value="mono">Mono</option>
+        </select>
+      </div>
+      <div class="control-group" style="margin-left:auto;">
+        <label>&nbsp;</label>
+        <button class="m3-btn tonal" id="downloadAllBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+          Download All
+        </button>
+      </div>
+      <div class="control-group">
+        <label>&nbsp;</label>
+        <button class="m3-btn danger" id="clearAllBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          Clear All
+        </button>
+      </div>
+    </div>
+  </section>
 
-<section class="gallery" id="gallery"></section>
+  <!-- Gallery -->
+  <section class="gallery" id="gallery"></section>
 
-<div class="toast-container" id="toastContainer"></div>
+  <!-- Snackbar -->
+  <div class="snackbar-container" id="snackbarContainer"></div>
+
+</div>
 
 <footer class="app-footer">
-  Built with care · Pixel 10 mockups rendered in pure CSS · No data leaves your browser
+  Material 3 Expressive · Pure CSS Pixel 10 mockups · All processing happens in your browser
 </footer>
 
 <script>
@@ -693,54 +918,55 @@ body::after {
    State
    ============================================================ */
 const state = {
-  files: [],          // [{ id, file, url, type, name }]
+  files: [],
   animation: 'tilt',
   frame: 'obsidian',
   glow: 'purple',
 };
 
 const GLOW_COLORS = {
-  purple:  'rgba(139, 92, 246, 0.22)',
-  sunset:  'rgba(251, 146, 60, 0.22)',
-  ocean:   'rgba(6, 182, 212, 0.22)',
-  emerald: 'rgba(16, 185, 129, 0.22)',
+  purple:  'rgba(207, 188, 255, 0.20)',
+  sunset:  'rgba(244, 180, 138, 0.20)',
+  ocean:   'rgba(159, 213, 255, 0.20)',
+  emerald: 'rgba(168, 240, 200, 0.20)',
   mono:    'rgba(255, 255, 255, 0.10)',
 };
 
 /* ============================================================
    DOM refs
    ============================================================ */
-const uploadZone   = document.getElementById('uploadZone');
-const fileInput    = document.getElementById('fileInput');
-const gallery      = document.getElementById('gallery');
-const controls     = document.getElementById('controls');
-const animSelect   = document.getElementById('animSelect');
-const frameSelect  = document.getElementById('frameSelect');
-const glowSelect   = document.getElementById('glowSelect');
+const uploadCard     = document.getElementById('uploadCard');
+const fileInput      = document.getElementById('fileInput');
+const gallery        = document.getElementById('gallery');
+const controlsBar    = document.getElementById('controlsBar');
+const animSelect     = document.getElementById('animSelect');
+const frameSelect    = document.getElementById('frameSelect');
+const glowSelect     = document.getElementById('glowSelect');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
-const clearAllBtn  = document.getElementById('clearAllBtn');
-const toastContainer = document.getElementById('toastContainer');
+const clearAllBtn    = document.getElementById('clearAllBtn');
+const snackbarContainer = document.getElementById('snackbarContainer');
 
 /* ============================================================
-   File handling
+   File upload
    ============================================================ */
+uploadCard.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
 ['dragenter', 'dragover'].forEach(evt =>
-  uploadZone.addEventListener(evt, (e) => {
+  uploadCard.addEventListener(evt, (e) => {
     e.preventDefault();
     e.stopPropagation();
-    uploadZone.classList.add('dragging');
+    uploadCard.classList.add('dragging');
   })
 );
 ['dragleave', 'drop'].forEach(evt =>
-  uploadZone.addEventListener(evt, (e) => {
+  uploadCard.addEventListener(evt, (e) => {
     e.preventDefault();
     e.stopPropagation();
-    uploadZone.classList.remove('dragging');
+    uploadCard.classList.remove('dragging');
   })
 );
-uploadZone.addEventListener('drop', (e) => {
+uploadCard.addEventListener('drop', (e) => {
   const files = e.dataTransfer.files;
   if (files && files.length) handleFiles(files);
 });
@@ -749,7 +975,7 @@ function handleFiles(fileList) {
   const accepted = [];
   for (const f of fileList) {
     if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
-      showToast(`Skipped: ${f.name} (unsupported type)`, 'error');
+      showSnackbar(`Skipped: ${f.name} (unsupported)`, 'error');
       continue;
     }
     accepted.push({
@@ -762,9 +988,9 @@ function handleFiles(fileList) {
   }
   if (!accepted.length) return;
   state.files.push(...accepted);
-  controls.classList.add('visible');
+  controlsBar.classList.add('visible');
   renderGallery();
-  showToast(`Added ${accepted.length} mockup${accepted.length > 1 ? 's' : ''}`, 'success');
+  showSnackbar(`Added ${accepted.length} mockup${accepted.length > 1 ? 's' : ''}`);
 }
 
 /* ============================================================
@@ -779,10 +1005,10 @@ function renderGallery() {
 
 function buildMockupCell(item, idx) {
   const cell = document.createElement('div');
-  cell.className = 'mockup-cell spotlight-bg anim-' + state.animation;
+  cell.className = 'mockup-cell anim-' + state.animation;
   cell.dataset.id = item.id;
   cell.style.setProperty('--cell-glow', GLOW_COLORS[state.glow]);
-  cell.style.animationDelay = (idx * 0.1) + 's';
+  cell.style.animationDelay = (idx * 0.08) + 's';
 
   const mediaEl = item.type === 'video'
     ? `<video src="${item.url}" autoplay muted loop playsinline></video>`
@@ -814,18 +1040,20 @@ function buildMockupCell(item, idx) {
       <div class="phone-reflection"></div>
     </div>
     <div class="mockup-actions">
-      <button class="action-btn" title="Download PNG" data-action="download">⬇</button>
-      <button class="action-btn" title="Remove" data-action="remove">✕</button>
+      <button class="icon-btn" title="Download PNG" data-action="download" aria-label="Download">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      </button>
+      <button class="icon-btn" title="Remove" data-action="remove" aria-label="Remove">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
     </div>
   `;
 
-  // Tilt-on-hover handlers
   if (state.animation === 'tilt') {
     attachTilt(cell.querySelector('.mockup-stage'), cell);
   }
 
-  // Action buttons
-  cell.querySelectorAll('.action-btn').forEach(btn => {
+  cell.querySelectorAll('.icon-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const action = btn.dataset.action;
@@ -838,47 +1066,51 @@ function buildMockupCell(item, idx) {
 }
 
 /* ============================================================
-   Tilt-on-hover effect (mouse parallax)
+   Tilt on hover
    ============================================================ */
 function attachTilt(stage, cell) {
-  const maxTilt = 18;
+  const maxTilt = 16;
+  let rafId = null;
   cell.addEventListener('mousemove', (e) => {
-    const rect = cell.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width  - 0.5;
-    const y = (e.clientY - rect.top)  / rect.height - 0.5;
-    stage.style.transform =
-      `rotateY(${x * maxTilt}deg) rotateX(${-y * maxTilt}deg) translateZ(20px)`;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      const rect = cell.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width  - 0.5;
+      const y = (e.clientY - rect.top)  / rect.height - 0.5;
+      stage.style.transform =
+        `rotateY(${x * maxTilt}deg) rotateX(${-y * maxTilt}deg) translateZ(20px)`;
+    });
   });
   cell.addEventListener('mouseleave', () => {
+    if (rafId) cancelAnimationFrame(rafId);
     stage.style.transform = '';
   });
 }
 
 /* ============================================================
-   Remove mockup
+   Remove
    ============================================================ */
 function removeMockup(id) {
   const item = state.files.find(f => f.id === id);
-  if (item) URL.revokeObjectURL(item.url);
+  if (item && item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
   state.files = state.files.filter(f => f.id !== id);
   renderGallery();
-  if (!state.files.length) controls.classList.remove('visible');
+  if (!state.files.length) controlsBar.classList.remove('visible');
 }
 
 /* ============================================================
-   Download single mockup as PNG (via html2canvas)
+   Download as PNG
    ============================================================ */
 async function downloadMockup(cell, baseName) {
   const stage = cell.querySelector('.mockup-stage');
   const originalTransform = stage.style.transform;
-  // Freeze the phone in a nice static pose for the snapshot
   if (state.animation === 'tilt') {
     stage.style.transform = 'rotateY(-12deg) rotateX(6deg)';
   } else if (state.animation === 'rotate') {
     stage.style.transform = 'rotateY(-15deg)';
   }
   try {
-    showToast('Rendering PNG…');
+    showSnackbar('Rendering PNG…');
     const canvas = await html2canvas(cell, {
       backgroundColor: null,
       scale: 2,
@@ -886,97 +1118,83 @@ async function downloadMockup(cell, baseName) {
       logging: false,
     });
     const link = document.createElement('a');
-    link.download = baseName.replace(/\.[^.]+$/, '') + '-pixel10-mockup.png';
+    link.download = baseName.replace(/\.[^.]+$/, '') + '-pixel10.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
-    showToast('Downloaded ✨', 'success');
+    showSnackbar('Downloaded');
   } catch (err) {
     console.error(err);
-    showToast('Export failed — try a still image', 'error');
+    showSnackbar('Export failed', 'error');
   } finally {
     stage.style.transform = originalTransform;
   }
 }
 
-/* ============================================================
-   Download all
-   ============================================================ */
 downloadAllBtn.addEventListener('click', async () => {
   if (!state.files.length) return;
   const cells = gallery.querySelectorAll('.mockup-cell');
   downloadAllBtn.disabled = true;
-  downloadAllBtn.textContent = '⏳ Exporting…';
+  downloadAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg> Exporting…';
   for (let i = 0; i < cells.length; i++) {
     await downloadMockup(cells[i], state.files[i].name);
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 400));
   }
   downloadAllBtn.disabled = false;
-  downloadAllBtn.innerHTML = '⬇ Download All';
+  downloadAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Download All';
 });
 
-/* ============================================================
-   Clear all
-   ============================================================ */
 clearAllBtn.addEventListener('click', () => {
   if (!state.files.length) return;
   if (!confirm('Remove all mockups?')) return;
-  state.files.forEach(f => URL.revokeObjectURL(f.url));
+  state.files.forEach(f => { if (f.url.startsWith('blob:')) URL.revokeObjectURL(f.url); });
   state.files = [];
   renderGallery();
-  controls.classList.remove('visible');
-  showToast('Cleared all mockups');
+  controlsBar.classList.remove('visible');
+  showSnackbar('Cleared all mockups');
 });
 
 /* ============================================================
-   Control changes — re-render with new animation / frame / glow
+   Control changes
    ============================================================ */
-animSelect.addEventListener('change', (e) => {
-  state.animation = e.target.value;
-  renderGallery();
-});
-frameSelect.addEventListener('change', (e) => {
-  state.frame = e.target.value;
-  renderGallery();
-});
-glowSelect.addEventListener('change', (e) => {
-  state.glow = e.target.value;
-  renderGallery();
-});
+animSelect.addEventListener('change', (e) => { state.animation = e.target.value; renderGallery(); });
+frameSelect.addEventListener('change', (e) => { state.frame = e.target.value; renderGallery(); });
+glowSelect.addEventListener('change', (e) => { state.glow = e.target.value; renderGallery(); });
 
 /* ============================================================
-   Toast
+   Snackbar
    ============================================================ */
-function showToast(message, type = '') {
-  const toast = document.createElement('div');
-  toast.className = 'toast ' + type;
-  toast.textContent = message;
-  toastContainer.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+function showSnackbar(message, type = '') {
+  const snack = document.createElement('div');
+  snack.className = 'snackbar ' + (type === 'error' ? 'snackbar-error' : '');
+  if (type === 'error') {
+    snack.style.background = 'var(--md-sys-color-error-container)';
+    snack.style.color = 'var(--md-sys-color-on-error-container)';
+  }
+  snack.textContent = message;
+  snackbarContainer.appendChild(snack);
+  setTimeout(() => snack.remove(), 3200);
 }
 
 /* ============================================================
-   Init — show a sample mockup to demonstrate
+   Sample mockup on init
    ============================================================ */
 (function initSample() {
-  // Use a tiny data-URI gradient as a sample screen so the page
-  // doesn't look empty before the user uploads anything.
-  const sampleCanvas = document.createElement('canvas');
-  sampleCanvas.width = 540; sampleCanvas.height = 1080;
-  const ctx = sampleCanvas.getContext('2d');
+  const c = document.createElement('canvas');
+  c.width = 540; c.height = 1080;
+  const ctx = c.getContext('2d');
   const grad = ctx.createLinearGradient(0, 0, 540, 1080);
-  grad.addColorStop(0, '#8b5cf6');
-  grad.addColorStop(0.5, '#ec4899');
-  grad.addColorStop(1, '#06b6d4');
+  grad.addColorStop(0, '#cfbcff');
+  grad.addColorStop(0.5, '#f4b4ce');
+  grad.addColorStop(1, '#9fd5ff');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 540, 1080);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ctx.font = 'bold 60px Inter, sans-serif';
+  ctx.fillStyle = 'rgba(50,30,80,0.9)';
+  ctx.font = 'bold 64px Roboto Flex, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('Pixel 10', 270, 520);
-  ctx.font = '28px Inter, sans-serif';
+  ctx.font = '28px Roboto Flex, sans-serif';
   ctx.fillText('Your content here', 270, 580);
-
-  const sampleUrl = sampleCanvas.toDataURL('image/png');
+  const sampleUrl = c.toDataURL('image/png');
   state.files.push({
     id: 'm_sample',
     file: null,
@@ -984,7 +1202,7 @@ function showToast(message, type = '') {
     type: 'image',
     name: 'sample',
   });
-  controls.classList.add('visible');
+  controlsBar.classList.add('visible');
   renderGallery();
 })();
 </script>
