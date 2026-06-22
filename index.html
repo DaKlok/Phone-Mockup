@@ -486,6 +486,7 @@ body::before {
   justify-content: center;
   min-height: 600px;
   padding: 24px;
+  perspective: 900px;
   animation: cellEnter var(--md-sys-motion-duration-long1) var(--md-sys-motion-easing-bounce) both;
 }
 @keyframes cellEnter {
@@ -505,12 +506,13 @@ body::before {
   transform: translateY(-6px);
 }
 
-/* Angled view — perspective transform matching the reference image */
+/* Angled view — perspective is set on .mockup-cell, so here we only apply rotation */
 .mockup-cell.view-angled .mockup-stage {
-  transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+  transform: rotateY(-32deg) rotateX(5deg);
+  transform-style: preserve-3d;
 }
 .mockup-cell.view-angled:hover .mockup-stage {
-  transform: perspective(900px) rotateY(-32deg) rotateX(5deg) translateY(-6px);
+  transform: rotateY(-32deg) rotateX(5deg) translateY(-6px);
 }
 /* Show the side edge (phone-buttons) more prominently when angled */
 .mockup-cell.view-angled .phone-buttons {
@@ -522,7 +524,7 @@ body::before {
   width: 6px;
 }
 
-/* ---- Pixel 10 Phone Body (static, front-only) ---- */
+/* ---- Pixel 10 Phone Body ---- */
 .phone {
   position: absolute;
   inset: 0;
@@ -534,11 +536,31 @@ body::before {
     0 0 0 1px rgba(0, 0, 0, 0.6),
     0 30px 60px rgba(0, 0, 0, 0.55),
     0 12px 24px rgba(0, 0, 0, 0.4);
+  transform-style: preserve-3d;
 }
 .phone.frame-obsidian { background: linear-gradient(145deg, #2a2a2e, #0f0f12); }
 .phone.frame-porcelain { background: linear-gradient(145deg, #f5f5f0, #d4d4cc); }
 .phone.frame-rose { background: linear-gradient(145deg, #e8a5b8, #b86d80); }
 .phone.frame-hazel { background: linear-gradient(145deg, #c9b896, #8a7858); }
+
+/* ---- Phone depth via single back face ---- */
+/* A duplicate of the phone body pushed 18px back in Z space.
+   When the phone is rotated in angled view, the gap between the
+   front face and this back face becomes visible as the phone's
+   side edge. Because both faces share the same border-radius,
+   the corners match perfectly — no artifacts. */
+.phone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 38px;
+  transform: translateZ(-18px);
+  background: linear-gradient(145deg, #0a0a0c, #050507);
+}
+.phone.frame-obsidian::before  { background: linear-gradient(145deg, #0a0a0c, #050507); }
+.phone.frame-porcelain::before { background: linear-gradient(145deg, #c8c8c0, #a8a8a0); }
+.phone.frame-rose::before      { background: linear-gradient(145deg, #a85a70, #884560); }
+.phone.frame-hazel::before     { background: linear-gradient(145deg, #786a4f, #5a4d38); }
 
 .phone-screen {
   position: relative;
@@ -1159,8 +1181,20 @@ async function renderAngledViaSvg(img) {
 
   const [frameC1, frameC2] = FRAME_GRADIENTS[state.frame];
 
+  // Back face colors (darker shade of frame color) for 3D depth
+  const BACK_FACE = {
+    obsidian:  ['#0a0a0c', '#050507'],
+    porcelain: ['#c8c8c0', '#a8a8a0'],
+    rose:      ['#a85a70', '#884560'],
+    hazel:     ['#786a4f', '#5a4d38'],
+  };
+  const [backC1, backC2] = BACK_FACE[state.frame];
+  const PHONE_DEPTH = 18; // phone thickness in px
+
   // Build the phone HTML exactly as it appears in the preview,
   // with inline styles so the SVG renderer doesn't need external CSS.
+  // Uses a single back face (translateZ) for clean 3D depth —
+  // both faces share the same border-radius, so no corner artifacts.
   const phoneHtml = `
     <div xmlns="http://www.w3.org/1999/xhtml" style="
       width: ${PHONE_SPEC.width}px;
@@ -1169,6 +1203,14 @@ async function renderAngledViaSvg(img) {
       transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
       transform-style: preserve-3d;
     ">
+      <!-- Back face (pushed behind for 3D depth) -->
+      <div style="
+        position: absolute; inset: 0;
+        border-radius: ${PHONE_SPEC.outerRadius}px;
+        transform: translateZ(-${PHONE_DEPTH}px);
+        background: linear-gradient(145deg, ${backC1}, ${backC2});
+      "></div>
+      <!-- Front face (phone body + screen) -->
       <div style="
         position: absolute; inset: 0;
         border-radius: ${PHONE_SPEC.outerRadius}px;
@@ -1179,6 +1221,7 @@ async function renderAngledViaSvg(img) {
           0 0 0 1px rgba(0,0,0,0.6),
           0 30px 60px rgba(0,0,0,0.55),
           0 12px 24px rgba(0,0,0,0.4);
+        transform-style: preserve-3d;
       ">
         <div style="
           position: relative; width: 100%; height: 100%;
@@ -1201,6 +1244,7 @@ async function renderAngledViaSvg(img) {
           "></div>
         </div>
       </div>
+      <!-- Side buttons (on the right edge) -->
       <div style="
         position: absolute; top: 28%; right: -5px;
         width: 6px; height: 70px;
