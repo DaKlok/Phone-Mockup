@@ -994,25 +994,23 @@ function removeMockup(id) {
 }
 
 /* ============================================================
-   Download as PNG
-
-   Strategy:
-   - Front view: draw directly on canvas (pixel-perfect, fast)
-   - Angled view: serialize the on-screen phone HTML into an SVG
-     <foreignObject>, apply the same CSS 3D transform, then
-     rasterize via an <img>. This uses the browser's native 3D
-     rendering, guaranteeing the export matches the preview.
+   Download — routes to video or PNG export based on item type
    ============================================================ */
 async function downloadMockup(item) {
+  if (item.type === 'video') {
+    await downloadVideoMockup(item);
+  } else {
+    await downloadImageMockup(item);
+  }
+}
+
+/* Download as PNG (for images) */
+async function downloadImageMockup(item) {
   showSnackbar('Rendering PNG…');
 
-  // Load the source image (or extract a video frame)
   let img;
   try {
-    const src = item.type === 'video'
-      ? (item.videoFrame || (item.videoFrame = await captureVideoFrame(item.url)))
-      : item.url;
-    img = await loadImage(src);
+    img = await loadImage(item.url);
   } catch (err) {
     console.error(err);
     showSnackbar('Could not load image', 'error');
@@ -1020,11 +1018,9 @@ async function downloadMockup(item) {
   }
 
   if (state.view === 'front') {
-    // Front view — draw directly on canvas (fast, pixel-perfect)
     const canvas = renderFlatPhone(img);
     triggerDownload(canvas, item.name);
   } else {
-    // Angled view — use SVG foreignObject + CSS transform
     try {
       const canvas = await renderAngledViaSvg(img);
       triggerDownload(canvas, item.name);
@@ -1036,18 +1032,267 @@ async function downloadMockup(item) {
   }
 }
 
+/* ============================================================
+   Download as video (MP4/WebM) using MediaRecorder API
+
+   Records a canvas stream while playing the source video,
+   drawing each frame into the phone mockup. For front view,
+   draws directly. For angled view, renders the flat phone to
+   an off-screen canvas, then draws it with perspective strips
+   + a back-face for 3D depth.
+   ============================================================ */
+
+/* Get the best supported video MIME type for MediaRecorder */
+function getSupportedVideoMime() {
+  const types = [
+    'video/mp4;codecs=h264',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
+  for (const type of types) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return 'video/webm';
+}
+
+/* Back-face colors (darker shade of frame) for 3D depth in video */
+const BACK_FACE_COLORS = {
+  obsidian:  ['#0a0a0c', '#050507'],
+  porcelain: ['#c8c8c0', '#a8a8a0'],
+  rose:      ['#a85a70', '#884560'],
+  hazel:     ['#786a4f', '#5a4d38'],
+};
+
+async function downloadVideoMockup(item) {
+  // Fall back to PNG if MediaRecorder is not supported
+  if (!window.MediaRecorder) {
+    showSnackbar('Video export not supported, exporting frame as PNG', 'error');
+    const frame = await captureVideoFrame(item.url);
+    const img = await loadImage(frame);
+    const canvas = state.view === 'front'
+      ? renderFlatPhone(img)
+      : await renderAngledViaSvg(img).catch(() => renderFlatPhone(img));
+    triggerDownload(canvas, item.name);
+    return;
+  }
+
+  showSnackbar('Recording video…');
+
+  // Load the video element
+  const video = document.createElement('video');
+  video.src = item.url;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+
+  try {
+    await new Promise((res, rej) => {
+      video.onloadeddata = res;
+      video.onerror = () => rej(new Error('Video load failed'));
+    });
+  } catch (err) {
+    showSnackbar('Could not load video', 'error');
+    return;
+  }
+
+  const SCALE = 2;
+  const PAD = state.view === 'front' ? 40 : 80;
+  const W = (PHONE_SPEC.width  + PAD * 2) * SCALE;
+  const H = (PHONE_SPEC.height + PAD * 2) * SCALE;
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Off-screen canvas for flat phone rendering (angled view)
+  const flatCanvas = document.createElement('canvas');
+  flatCanvas.width  = W;
+  flatCanvas.height = H;
+  const flatCtx = flatCanvas.getContext('2d');
+
+  // Set up MediaRecorder
+  const mimeType = getSupportedVideoMime();
+  const stream = canvas.captureStream(30);
+  const recorder = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: 8000000,
+  });
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+  const recordingDone = new Promise(resolve => {
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = item.name.replace(/\.[^.]+$/, '') + '-pixel10.' + ext;
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      resolve();
+    };
+  });
+
+  recorder.start(100);
+  video.currentTime = 0;
+  await video.play();
+
+  // Draw frames until the video ends
+  await new Promise(resolve => {
+    function drawFrame() {
+      if (video.ended) {
+        setTimeout(() => {
+          if (recorder.state !== 'inactive') recorder.stop();
+          resolve();
+        }, 200);
+        return;
+      }
+
+      ctx.clearRect(0, 0, W, H);
+
+      if (state.view === 'front') {
+        drawFlatPhone(ctx, video, SCALE, PAD);
+      } else {
+        // 1. Render flat phone to off-screen canvas
+        flatCtx.clearRect(0, 0, W, H);
+        drawFlatPhone(flatCtx, video, SCALE, PAD);
+
+        // 2. Draw back face (darker, offset right for depth)
+        drawBackFace(ctx, SCALE, PAD);
+
+        // 3. Draw flat phone with perspective strips on top
+        drawWithPerspective(ctx, flatCanvas,
+          PAD * SCALE, PAD * SCALE,
+          PHONE_SPEC.width * SCALE, PHONE_SPEC.height * SCALE,
+          -32, 900 * SCALE);
+      }
+
+      requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+  });
+
+  await recordingDone;
+  showSnackbar('Downloaded video');
+}
+
+/* Draw the back face as a darker trapezoid offset to the right,
+   simulating the phone's 3D thickness in the angled video view. */
+function drawBackFace(ctx, SCALE, PAD) {
+  const angleY = -32 * Math.PI / 180;
+  const cos = Math.cos(angleY);
+  const sin = Math.sin(angleY);
+  const persp = 900 * SCALE;
+
+  const phoneW = PHONE_SPEC.width * SCALE;
+  const phoneH = PHONE_SPEC.height * SCALE;
+  const phoneX = PAD * SCALE;
+  const phoneY = PAD * SCALE;
+
+  // Back face offset (how far the back face peeks out to the right)
+  const backOffset = 18 * Math.abs(sin) * SCALE; // ≈ 9.5 * SCALE
+
+  // Compute 4 corners with perspective (same math as drawWithPerspective)
+  // Left edge (t=0): further away (smaller)
+  const xL_centered = -phoneW / 2;
+  const zL = -xL_centered * sin;
+  const scaleL = persp / (persp - zL);
+  const hL = phoneH * scaleL;
+  const phoneWidthAfter = phoneW * cos;
+  const phoneStartX = phoneX + (phoneW - phoneWidthAfter) / 2;
+  const xL_screen = phoneStartX;
+  const yL_top = phoneY + (phoneH - hL) / 2;
+  const yL_bot = phoneY + (phoneH + hL) / 2;
+
+  // Right edge (t=1): closer (larger)
+  const xR_centered = phoneW / 2;
+  const zR = -xR_centered * sin;
+  const scaleR = persp / (persp - zR);
+  const hR = phoneH * scaleR;
+  const xR_screen = phoneStartX + phoneWidthAfter;
+  const yR_top = phoneY + (phoneH - hR) / 2;
+  const yR_bot = phoneY + (phoneH + hR) / 2;
+
+  // Draw the back face trapezoid (offset to the right by backOffset)
+  const [bc1, bc2] = BACK_FACE_COLORS[state.frame];
+  const grad = ctx.createLinearGradient(xL_screen + backOffset, yL_top,
+                                         xR_screen + backOffset, yR_bot);
+  grad.addColorStop(0, bc1);
+  grad.addColorStop(1, bc2);
+
+  ctx.beginPath();
+  ctx.moveTo(xL_screen + backOffset, yL_top);
+  ctx.lineTo(xR_screen + backOffset, yR_top);
+  ctx.lineTo(xR_screen + backOffset, yR_bot);
+  ctx.lineTo(xL_screen + backOffset, yL_bot);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+/* Draw a source canvas with a perspective transform by slicing it
+   into vertical strips, each with a different scale based on the
+   Z-depth at that horizontal position. This produces a true
+   perspective effect (left side smaller/further, right side
+   larger/closer) matching the CSS rotateY transform. */
+function drawWithPerspective(ctx, srcCanvas, dx, dy, dw, dh, angleYDeg, perspective) {
+  const angleY = angleYDeg * Math.PI / 180;
+  const cos = Math.cos(angleY);
+  const sin = Math.sin(angleY);
+  const STRIPS = 50;
+  const srcW = srcCanvas.width;
+  const srcH = srcCanvas.height;
+
+  // The phone width is compressed by cos(angleY) after rotation
+  const phoneWidthAfter = dw * cos;
+  const phoneStartX = dx + (dw - phoneWidthAfter) / 2;
+
+  for (let i = 0; i < STRIPS; i++) {
+    const t0 = i / STRIPS;
+    const t1 = (i + 1) / STRIPS;
+    const tMid = (t0 + t1) / 2;
+
+    // Centered x position for perspective calc
+    const x = (tMid - 0.5) * dw;
+    const z = -x * sin;
+    const scale = perspective / (perspective - z);
+
+    // Strip dimensions
+    const stripX = phoneStartX + t0 * phoneWidthAfter;
+    const stripW = (phoneWidthAfter / STRIPS) + 1; // +1 to avoid gaps
+    const stripH = dh * scale;
+    const stripY = dy + (dh - stripH) / 2;
+
+    // Source strip
+    const sx = srcW * t0;
+    const sw = srcW / STRIPS + 1;
+
+    ctx.drawImage(srcCanvas, sx, 0, sw, srcH, stripX, stripY, stripW, stripH);
+  }
+}
+
 /* Render the flat front-view phone to a canvas (used for front view
    and as a fallback for angled view) */
 function renderFlatPhone(img) {
   const SCALE = 3;
   const PAD = 40;
-  const W = PHONE_SPEC.width  + PAD * 2;
-  const H = PHONE_SPEC.height + PAD * 2;
-
   const canvas = document.createElement('canvas');
-  canvas.width  = W * SCALE;
-  canvas.height = H * SCALE;
+  canvas.width  = (PHONE_SPEC.width  + PAD * 2) * SCALE;
+  canvas.height = (PHONE_SPEC.height + PAD * 2) * SCALE;
   const ctx = canvas.getContext('2d');
+  drawFlatPhone(ctx, img, SCALE, PAD);
+  return canvas;
+}
+
+/* Draw the flat phone onto a given context. Reusable for both static
+   PNG export and per-frame video rendering. Accepts any CanvasImageSource
+   (Image, VideoElement, Canvas). */
+function drawFlatPhone(ctx, img, SCALE, PAD) {
+  ctx.save();
   ctx.scale(SCALE, SCALE);
   ctx.translate(PAD, PAD);
 
@@ -1090,9 +1335,12 @@ function renderFlatPhone(img) {
   ctx.fillStyle = '#000';
   ctx.fill();
 
-  // --- 4. User image with object-fit: cover math ---
+  // --- 4. User image/video with object-fit: cover math ---
+  // For video elements, use videoWidth/videoHeight; for images, naturalWidth/Height
+  const imgW = img.videoWidth  || img.naturalWidth  || img.width;
+  const imgH = img.videoHeight || img.naturalHeight || img.height;
   const screenAspect = sw / sh;
-  const imgAspect = img.width / img.height;
+  const imgAspect = imgW / imgH;
   let drawW, drawH, drawX, drawY;
   if (imgAspect > screenAspect) {
     drawH = sh;
@@ -1144,7 +1392,7 @@ function renderFlatPhone(img) {
                     PHONE_SPEC.buttons.w, PHONE_SPEC.buttons.volumeH, 2);
   ctx.fill();
 
-  return canvas;
+  ctx.restore();
 }
 
 /* Render the angled view by building an SVG with a <foreignObject>
