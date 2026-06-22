@@ -381,7 +381,7 @@ body::before {
   justify-content: center;
   gap: 8px;
   padding: 0 24px;
-  border-radius: var(--md-sys-shape-corner-full);
+  border-radius: var(--md-sys-shape-corner-lg);
   font: var(--md-sys-typescale-label-large);
   font-family: inherit;
   border: none;
@@ -392,6 +392,7 @@ body::before {
     transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-spring);
   white-space: nowrap;
   height: 56px;
+  min-width: 160px;
 }
 .m3-btn:active { transform: scale(0.96); }
 .m3-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -434,6 +435,14 @@ body::before {
 
 .m3-btn svg { width: 18px; height: 18px; }
 
+/* Tightly grouped button cluster (Download All + Clear All) */
+.button-group {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
 /* ============================================================
    GALLERY GRID
    ============================================================ */
@@ -444,13 +453,30 @@ body::before {
   min-height: 0;
   padding: 16px 0;
 }
-.gallery:empty::after {
-  content: 'Mockups will appear here';
-  grid-column: 1 / -1;
+.gallery:empty::before {
+  content: '';
+  display: block;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: var(--md-sys-color-surface-container-high);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36' viewBox='0 0 24 24' fill='%23948f99'><path d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.gallery:empty {
+  display: block;
   text-align: center;
   color: var(--md-sys-color-on-surface-variant);
-  padding: 60px 0;
+  padding: 60px 20px;
   font: var(--md-sys-typescale-body-large);
+  min-height: 200px;
+}
+.gallery:empty::after {
+  content: 'Your mockups will appear here';
+  display: block;
+  margin-top: 0;
 }
 
 .mockup-cell {
@@ -720,15 +746,11 @@ body::before {
           <option value="hazel">Hazel</option>
         </select>
       </div>
-      <div class="control-group" style="margin-left:auto;">
-        <label>&nbsp;</label>
+      <div class="button-group">
         <button class="m3-btn tonal" id="downloadAllBtn">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
           Download All
         </button>
-      </div>
-      <div class="control-group">
-        <label>&nbsp;</label>
         <button class="m3-btn danger" id="clearAllBtn">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           Clear All
@@ -1156,35 +1178,8 @@ function showSnackbar(message, type = '') {
 }
 
 /* ============================================================
-   Sample mockup on init
+   Init — gallery starts empty, user uploads populate it
    ============================================================ */
-(function initSample() {
-  const c = document.createElement('canvas');
-  c.width = 540; c.height = 1080;
-  const ctx = c.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 540, 1080);
-  grad.addColorStop(0, '#cfbcff');
-  grad.addColorStop(0.5, '#f4b4ce');
-  grad.addColorStop(1, '#9fd5ff');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 540, 1080);
-  ctx.fillStyle = 'rgba(50,30,80,0.9)';
-  ctx.font = 'bold 64px Roboto Flex, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Pixel 10', 270, 520);
-  ctx.font = '28px Roboto Flex, sans-serif';
-  ctx.fillText('Your content here', 270, 580);
-  const sampleUrl = c.toDataURL('image/png');
-  state.files.push({
-    id: 'm_sample',
-    file: null,
-    url: sampleUrl,
-    type: 'image',
-    name: 'sample',
-  });
-  controlsBar.classList.add('visible');
-  renderGallery();
-})();
 </script>
 
 </body>
