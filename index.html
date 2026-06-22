@@ -1192,36 +1192,49 @@ async function downloadVideoMockup(item) {
   });
 
   // Configure encoder for H.264
-  // Use a level that supports our resolution. Level 4.2 supports up to 1920x1080@60fps.
   encoder.configure({
-    codec: 'avc1.640033', // H.264 High profile, level 5.1 (supports up to 4K)
+    codec: 'avc1.640033', // H.264 High profile, level 5.1
     width: W,
     height: H,
     bitrate: 8_000_000,
     framerate: fps,
-    latencyMode: 'quality',
+    latencyMode: 'realtime', // Output encoded frames immediately, don't buffer
   });
 
-  // Process video frames using requestVideoFrameCallback.
-  // We play the video and capture each unique frame as it renders.
-  // The VideoEncoder processes frames asynchronously in parallel,
-  // so encoding doesn't add to the total time.
+  // Process video frames using requestVideoFrameCallback with backpressure.
   showProgress('Encoding… 0%', 0);
 
   const frameDuration = 1_000_000 / fps; // microseconds per frame
   let frameIdx = 0;
 
-  video.currentTime = 0;
-  await new Promise(res => { video.onseeked = res; });
+  // Seek to start — use a one-time event listener to avoid stale handlers
+  await new Promise((res) => {
+    const handler = () => { video.removeEventListener('seeked', handler); res(); };
+    video.addEventListener('seeked', handler, { once: true });
+    video.currentTime = 0;
+  });
+
   await video.play();
 
-  await new Promise(resolve => {
+  // Frame capture loop with backpressure: if the encoder queue grows
+  // too large, we wait for it to drain before capturing more frames.
+  // This prevents the browser tab from crashing on long videos.
+  await new Promise((resolve) => {
+    let finished = false;
     let lastTime = -1;
+
+    function finish() {
+      if (finished) return;
+      finished = true;
+      resolve();
+    }
+
+    // Safety net: if the video ends but rVFC doesn't fire one last time,
+    // the 'ended' event ensures we resolve.
+    video.addEventListener('ended', finish, { once: true });
+
     function onFrame(now, metadata) {
-      if (video.ended) {
-        resolve();
-        return;
-      }
+      if (finished) return;
 
       // Only encode if we got a new frame
       if (metadata.mediaTime !== lastTime) {
@@ -1257,10 +1270,25 @@ async function downloadVideoMockup(item) {
         showProgress(`Encoding… ${pct}%`, pct);
       }
 
-      if (typeof video.requestVideoFrameCallback === 'function') {
-        video.requestVideoFrameCallback(onFrame);
+      // Backpressure: if the encoder queue is too large, wait briefly
+      // before requesting the next frame. This prevents memory blowup
+      // on long videos.
+      if (encoder.encodeQueueSize > 5) {
+        setTimeout(() => {
+          if (!finished) {
+            if (typeof video.requestVideoFrameCallback === 'function') {
+              video.requestVideoFrameCallback(onFrame);
+            } else {
+              requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
+            }
+          }
+        }, 10);
       } else {
-        requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
+        if (typeof video.requestVideoFrameCallback === 'function') {
+          video.requestVideoFrameCallback(onFrame);
+        } else {
+          requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
+        }
       }
     }
 
@@ -1276,6 +1304,12 @@ async function downloadVideoMockup(item) {
 
   // Get the MP4 buffer and download
   const { buffer } = muxerTarget;
+  if (!buffer || buffer.byteLength === 0) {
+    hideProgress();
+    showSnackbar('Encoding failed — try again', 'error');
+    encoder.close();
+    return;
+  }
   const blob = new Blob([buffer], { type: 'video/mp4' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
