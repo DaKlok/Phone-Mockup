@@ -1078,7 +1078,7 @@ async function downloadVideoMockup(item) {
     return;
   }
 
-  showSnackbar('Recording video…');
+  showSnackbar('Preparing video…');
 
   // Load the video element
   const video = document.createElement('video');
@@ -1097,10 +1097,88 @@ async function downloadVideoMockup(item) {
     return;
   }
 
+  // Output canvas — the phone fills the ENTIRE frame.
+  // For front view: canvas = phone dimensions exactly.
+  // For angled view: canvas = bounding box of the perspective-projected phone,
+  //   computed from the actual corner projection math so there's zero wasted space.
   const SCALE = 2;
-  const PAD = state.view === 'front' ? 40 : 80;
-  const W = (PHONE_SPEC.width  + PAD * 2) * SCALE;
-  const H = (PHONE_SPEC.height + PAD * 2) * SCALE;
+  const phoneW = PHONE_SPEC.width * SCALE;   // 560
+  const phoneH = PHONE_SPEC.height * SCALE;  // 1160
+
+  const usePerspective = state.view === 'angled';
+  const angleYRad = 32 * Math.PI / 180;
+  const sinA = Math.sin(angleYRad);
+  const cosA = Math.cos(angleYRad);
+  const PERSP = 900 * SCALE;
+  const PHONE_DEPTH = 18 * SCALE;
+
+  let W, H, phoneOutX, phoneOutY, phoneOutW, phoneOutH;
+
+  if (!usePerspective) {
+    // Front view — phone fills canvas exactly
+    W = phoneW;
+    H = phoneH;
+    phoneOutX = 0;
+    phoneOutY = 0;
+    phoneOutW = phoneW;
+    phoneOutH = phoneH;
+  } else {
+    // Angled view — compute the bounding box of the 4 projected corners
+    // (including the back-face depth offset on the right).
+    // Corner positions (centered at origin, before projection):
+    //   TL=(-phoneW/2, -phoneH/2), TR=(+phoneW/2, -phoneH/2),
+    //   BR=(+phoneW/2, +phoneH/2), BL=(-phoneW/2, +phoneH/2)
+    // After rotateY(-32°): x' = x*cos - z*sin (but z=0 for front face),
+    //   so x' = x*cos. z' = x*sin.
+    // After perspective: x_proj = x' * PERSP / (PERSP - z')
+    // The back face is at z = -PHONE_DEPTH, offset right by PHONE_DEPTH*sin.
+
+    const corners = [
+      { x: -phoneW / 2, y: -phoneH / 2 },  // TL
+      { x:  phoneW / 2, y: -phoneH / 2 },  // TR
+      { x:  phoneW / 2, y:  phoneH / 2 },  // BR
+      { x: -phoneW / 2, y:  phoneH / 2 },  // BL
+    ];
+
+    // Project front-face corners
+    const projectedFront = corners.map(c => {
+      const xRot = c.x * cosA;
+      const zRot = c.x * sinA; // rotateY(-32°) → z' = x*sin(32°) for x>0 (right side closer)
+      const scale = PERSP / (PERSP - zRot);
+      return { x: xRot * scale, y: c.y * scale };
+    });
+
+    // Project back-face corners (at z = -PHONE_DEPTH, offset right by PHONE_DEPTH*sin)
+    // The back face is the same rectangle but pushed back in Z.
+    const projectedBack = corners.map(c => {
+      const xRot = c.x * cosA;
+      const zRot = c.x * sinA - PHONE_DEPTH; // pushed back
+      const scale = PERSP / (PERSP - zRot);
+      return { x: xRot * scale, y: c.y * scale };
+    });
+
+    // Find bounding box of all 8 projected points
+    const allX = [...projectedFront, ...projectedBack].map(p => p.x);
+    const allY = [...projectedFront, ...projectedBack].map(p => p.y);
+    const minX = Math.min(...allX);
+    const maxX = Math.max(...allX);
+    const minY = Math.min(...allY);
+    const maxY = Math.max(...allY);
+
+    W = Math.ceil(maxX - minX);
+    H = Math.ceil(maxY - minY);
+
+    // The phone's projected center should be at:
+    //   screenX = -minX  (so projected x=minX maps to screen x=0)
+    //   screenY = -minY
+    // drawWithPerspective uses cx = dx + dw/2, so we need:
+    //   dx + dw/2 = -minX  →  dx = -minX - dw/2
+    //   dy + dh/2 = -minY  →  dy = -minY - dh/2
+    phoneOutX = -minX - phoneW / 2;
+    phoneOutY = -minY - phoneH / 2;
+    phoneOutW = phoneW;
+    phoneOutH = phoneH;
+  }
 
   const canvas = document.createElement('canvas');
   canvas.width  = W;
@@ -1109,8 +1187,8 @@ async function downloadVideoMockup(item) {
 
   // Off-screen canvas for flat phone rendering (angled view)
   const flatCanvas = document.createElement('canvas');
-  flatCanvas.width  = W;
-  flatCanvas.height = H;
+  flatCanvas.width  = phoneW;
+  flatCanvas.height = phoneH;
   const flatCtx = flatCanvas.getContext('2d');
 
   // Set up MediaRecorder
@@ -1118,7 +1196,7 @@ async function downloadVideoMockup(item) {
   const stream = canvas.captureStream(30);
   const recorder = new MediaRecorder(stream, {
     mimeType,
-    videoBitsPerSecond: 8000000,
+    videoBitsPerSecond: 12000000, // 12 Mbps for high quality
   });
   const chunks = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
@@ -1137,9 +1215,18 @@ async function downloadVideoMockup(item) {
     };
   });
 
-  recorder.start(100);
+  // Seek to start and wait for the first frame to be ready
   video.currentTime = 0;
+  await new Promise(res => {
+    video.onseeked = res;
+  });
   await video.play();
+  showSnackbar('Recording video…');
+
+  // Wait for first frame to actually render
+  await new Promise(res => requestAnimationFrame(res));
+
+  recorder.start();
 
   // Draw frames until the video ends
   await new Promise(resolve => {
@@ -1148,27 +1235,38 @@ async function downloadVideoMockup(item) {
         setTimeout(() => {
           if (recorder.state !== 'inactive') recorder.stop();
           resolve();
-        }, 200);
+        }, 100);
         return;
       }
 
       ctx.clearRect(0, 0, W, H);
 
-      if (state.view === 'front') {
-        drawFlatPhone(ctx, video, SCALE, PAD);
+      if (!usePerspective) {
+        // Front view — draw phone filling the entire canvas
+        drawFlatPhone(ctx, video, SCALE, 0);
       } else {
-        // 1. Render flat phone to off-screen canvas
-        flatCtx.clearRect(0, 0, W, H);
-        drawFlatPhone(flatCtx, video, SCALE, PAD);
+        // Angled view:
+        // 0. Fill background with the phone's frame color so there's no
+        //    black around the projected trapezoid. The phone's 3D shape
+        //    blends naturally into this background.
+        const [bgC1, bgC2] = FRAME_GRADIENTS[state.frame];
+        const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+        bgGrad.addColorStop(0, bgC1);
+        bgGrad.addColorStop(1, bgC2);
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
 
-        // 2. Draw back face (darker, offset right for depth)
-        drawBackFace(ctx, SCALE, PAD);
+        // 1. Render flat phone to off-screen canvas (no padding)
+        flatCtx.clearRect(0, 0, phoneW, phoneH);
+        drawFlatPhone(flatCtx, video, SCALE, 0);
+
+        // 2. Draw back face (darker, positioned at projected right edge for depth)
+        drawBackFace(ctx, phoneOutX, phoneOutY, phoneW, phoneH, sinA, cosA, PERSP, PHONE_DEPTH);
 
         // 3. Draw flat phone with perspective strips on top
         drawWithPerspective(ctx, flatCanvas,
-          PAD * SCALE, PAD * SCALE,
-          PHONE_SPEC.width * SCALE, PHONE_SPEC.height * SCALE,
-          -32, 900 * SCALE);
+          phoneOutX, phoneOutY, phoneW, phoneH,
+          -32, PERSP);
       }
 
       requestAnimationFrame(drawFrame);
@@ -1180,55 +1278,52 @@ async function downloadVideoMockup(item) {
   showSnackbar('Downloaded video');
 }
 
-/* Draw the back face as a darker trapezoid offset to the right,
-   simulating the phone's 3D thickness in the angled video view. */
-function drawBackFace(ctx, SCALE, PAD) {
-  const angleY = -32 * Math.PI / 180;
-  const cos = Math.cos(angleY);
-  const sin = Math.sin(angleY);
-  const persp = 900 * SCALE;
+/* Draw the back face — a darker quad showing the phone's 3D thickness.
+   The back face is the same rectangle as the front but pushed back in Z
+   by PHONE_DEPTH. We project its 4 corners through the same perspective
+   math as the front face and fill the resulting quad. */
+function drawBackFace(ctx, phoneX, phoneY, phoneW, phoneH, sinA, cosA, PERSP, PHONE_DEPTH) {
+  // 4 corners of the back face (relative to phone top-left), before projection.
+  // Z = -PHONE_DEPTH (pushed back).
+  const corners = [
+    { x: 0,         y: 0 },           // TL
+    { x: phoneW,    y: 0 },           // TR
+    { x: phoneW,    y: phoneH },      // BR
+    { x: 0,         y: phoneH },      // BL
+  ];
 
-  const phoneW = PHONE_SPEC.width * SCALE;
-  const phoneH = PHONE_SPEC.height * SCALE;
-  const phoneX = PAD * SCALE;
-  const phoneY = PAD * SCALE;
+  // Project each corner: rotateY(-32°) then perspective.
+  // Center the phone at (phoneX + phoneW/2, phoneY + phoneH/2) for rotation.
+  const cx = phoneX + phoneW / 2;
+  const cy = phoneY + phoneH / 2;
 
-  // Back face offset (how far the back face peeks out to the right)
-  const backOffset = 18 * Math.abs(sin) * SCALE; // ≈ 9.5 * SCALE
+  const projected = corners.map(c => {
+    // Translate to center
+    const x = c.x - phoneW / 2;
+    const y = c.y - phoneH / 2;
+    // rotateY(-32°): x' = x*cos, z' = x*sin (for the back face, z = -PHONE_DEPTH)
+    const xRot = x * cosA;
+    const zRot = x * sinA - PHONE_DEPTH;
+    // Perspective
+    const scale = PERSP / (PERSP - zRot);
+    return {
+      x: cx + xRot * scale,
+      y: cy + y * scale,
+    };
+  });
 
-  // Compute 4 corners with perspective (same math as drawWithPerspective)
-  // Left edge (t=0): further away (smaller)
-  const xL_centered = -phoneW / 2;
-  const zL = -xL_centered * sin;
-  const scaleL = persp / (persp - zL);
-  const hL = phoneH * scaleL;
-  const phoneWidthAfter = phoneW * cos;
-  const phoneStartX = phoneX + (phoneW - phoneWidthAfter) / 2;
-  const xL_screen = phoneStartX;
-  const yL_top = phoneY + (phoneH - hL) / 2;
-  const yL_bot = phoneY + (phoneH + hL) / 2;
-
-  // Right edge (t=1): closer (larger)
-  const xR_centered = phoneW / 2;
-  const zR = -xR_centered * sin;
-  const scaleR = persp / (persp - zR);
-  const hR = phoneH * scaleR;
-  const xR_screen = phoneStartX + phoneWidthAfter;
-  const yR_top = phoneY + (phoneH - hR) / 2;
-  const yR_bot = phoneY + (phoneH + hR) / 2;
-
-  // Draw the back face trapezoid (offset to the right by backOffset)
+  // Fill the quad
   const [bc1, bc2] = BACK_FACE_COLORS[state.frame];
-  const grad = ctx.createLinearGradient(xL_screen + backOffset, yL_top,
-                                         xR_screen + backOffset, yR_bot);
+  const grad = ctx.createLinearGradient(projected[0].x, projected[0].y,
+                                         projected[2].x, projected[2].y);
   grad.addColorStop(0, bc1);
   grad.addColorStop(1, bc2);
 
   ctx.beginPath();
-  ctx.moveTo(xL_screen + backOffset, yL_top);
-  ctx.lineTo(xR_screen + backOffset, yR_top);
-  ctx.lineTo(xR_screen + backOffset, yR_bot);
-  ctx.lineTo(xL_screen + backOffset, yL_bot);
+  ctx.moveTo(projected[0].x, projected[0].y);
+  ctx.lineTo(projected[1].x, projected[1].y);
+  ctx.lineTo(projected[2].x, projected[2].y);
+  ctx.lineTo(projected[3].x, projected[3].y);
   ctx.closePath();
   ctx.fillStyle = grad;
   ctx.fill();
@@ -1238,7 +1333,10 @@ function drawBackFace(ctx, SCALE, PAD) {
    into vertical strips, each with a different scale based on the
    Z-depth at that horizontal position. This produces a true
    perspective effect (left side smaller/further, right side
-   larger/closer) matching the CSS rotateY transform. */
+   larger/closer) matching the CSS rotateY transform.
+
+   The math here MUST match the bounding-box projection in
+   downloadVideoMockup() so the phone fills the canvas exactly. */
 function drawWithPerspective(ctx, srcCanvas, dx, dy, dw, dh, angleYDeg, perspective) {
   const angleY = angleYDeg * Math.PI / 180;
   const cos = Math.cos(angleY);
@@ -1247,31 +1345,41 @@ function drawWithPerspective(ctx, srcCanvas, dx, dy, dw, dh, angleYDeg, perspect
   const srcW = srcCanvas.width;
   const srcH = srcCanvas.height;
 
-  // The phone width is compressed by cos(angleY) after rotation
-  const phoneWidthAfter = dw * cos;
-  const phoneStartX = dx + (dw - phoneWidthAfter) / 2;
+  // Center of the phone rectangle
+  const cx = dx + dw / 2;
+  const cy = dy + dh / 2;
 
   for (let i = 0; i < STRIPS; i++) {
     const t0 = i / STRIPS;
     const t1 = (i + 1) / STRIPS;
     const tMid = (t0 + t1) / 2;
 
-    // Centered x position for perspective calc
+    // Centered x position (-dw/2 to +dw/2)
     const x = (tMid - 0.5) * dw;
-    const z = -x * sin;
+    // rotateY(-32°): x' = x*cos, z' = x*sin (right side closer when sin>0)
+    const xRot = x * cos;
+    const z = x * sin;
+    // Perspective scale
     const scale = perspective / (perspective - z);
 
-    // Strip dimensions
-    const stripX = phoneStartX + t0 * phoneWidthAfter;
-    const stripW = (phoneWidthAfter / STRIPS) + 1; // +1 to avoid gaps
+    // Projected x position (relative to center)
+    const projX = xRot * scale;
+    // Strip width in projected space
+    const projW = (dw / STRIPS) * cos * scale + 1; // +1 to avoid gaps
+    // Strip height in projected space — the full phone height scaled
     const stripH = dh * scale;
-    const stripY = dy + (dh - stripH) / 2;
+    // Strip position: center the strip on the projected center line.
+    // The phone's vertical center (y=0 in centered coords) projects to
+    // cy (no vertical rotation, so y=0 → 0). The strip extends ±stripH/2
+    // from that center, matching the projected corners exactly.
+    const stripX = cx + projX - projW / 2;
+    const stripY = cy - stripH / 2;
 
     // Source strip
     const sx = srcW * t0;
     const sw = srcW / STRIPS + 1;
 
-    ctx.drawImage(srcCanvas, sx, 0, sw, srcH, stripX, stripY, stripW, stripH);
+    ctx.drawImage(srcCanvas, sx, 0, sw, srcH, stripX, stripY, projW, stripH);
   }
 }
 
