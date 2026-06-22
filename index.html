@@ -499,9 +499,27 @@ body::before {
   width: 280px;
   height: 580px;
   transition: transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-spring);
+  transform-style: preserve-3d;
 }
 .mockup-cell:hover .mockup-stage {
   transform: translateY(-6px);
+}
+
+/* Angled view — perspective transform matching the reference image */
+.mockup-cell.view-angled .mockup-stage {
+  transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+}
+.mockup-cell.view-angled:hover .mockup-stage {
+  transform: perspective(900px) rotateY(-32deg) rotateX(5deg) translateY(-6px);
+}
+/* Show the side edge (phone-buttons) more prominently when angled */
+.mockup-cell.view-angled .phone-buttons {
+  right: -5px;
+  width: 6px;
+}
+.mockup-cell.view-angled .btn-power,
+.mockup-cell.view-angled .btn-volume {
+  width: 6px;
 }
 
 /* ---- Pixel 10 Phone Body (static, front-only) ---- */
@@ -738,6 +756,13 @@ body::before {
   <section class="controls-bar" id="controlsBar">
     <div class="controls-row">
       <div class="control-group">
+        <label for="viewSelect">View</label>
+        <select class="m3-select" id="viewSelect">
+          <option value="front" selected>Front</option>
+          <option value="angled">Angled</option>
+        </select>
+      </div>
+      <div class="control-group">
         <label for="frameSelect">Frame Color</label>
         <select class="m3-select" id="frameSelect">
           <option value="obsidian" selected>Obsidian</option>
@@ -802,12 +827,22 @@ const FRAME_GRADIENTS = {
   hazel:     ['#c9b896', '#8a7858'],
 };
 
+/* Angled-view transform parameters — must match the CSS .view-angled rule
+   and the inline transform in renderAngledViaSvg() */
+const ANGLED_SPEC = {
+  // Matches: perspective(900px) rotateY(-32deg) rotateX(5deg)
+  perspective: 900,
+  rotateY: -32,   // degrees (negative = tilt left, showing right edge)
+  rotateX: 5,     // degrees (slight downward tilt)
+};
+
 /* ============================================================
    State
    ============================================================ */
 const state = {
   files: [],
   frame: 'obsidian',
+  view: 'front',
 };
 
 /* ============================================================
@@ -817,6 +852,7 @@ const uploadCard     = document.getElementById('uploadCard');
 const fileInput      = document.getElementById('fileInput');
 const gallery        = document.getElementById('gallery');
 const controlsBar    = document.getElementById('controlsBar');
+const viewSelect     = document.getElementById('viewSelect');
 const frameSelect    = document.getElementById('frameSelect');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const clearAllBtn    = document.getElementById('clearAllBtn');
@@ -881,7 +917,7 @@ function renderGallery() {
 
 function buildMockupCell(item, idx) {
   const cell = document.createElement('div');
-  cell.className = 'mockup-cell';
+  cell.className = 'mockup-cell view-' + state.view;
   cell.dataset.id = item.id;
   cell.style.animationDelay = (idx * 0.08) + 's';
 
@@ -938,11 +974,12 @@ function removeMockup(id) {
 /* ============================================================
    Download as PNG
 
-   Draws the phone directly on a <canvas> using the SAME spec as
-   the on-screen preview. This guarantees:
-   - No image stretching (we calculate cover-fit manually)
-   - No mismatched phone shape
-   - No external libraries
+   Strategy:
+   - Front view: draw directly on canvas (pixel-perfect, fast)
+   - Angled view: serialize the on-screen phone HTML into an SVG
+     <foreignObject>, apply the same CSS 3D transform, then
+     rasterize via an <img>. This uses the browser's native 3D
+     rendering, guaranteeing the export matches the preview.
    ============================================================ */
 async function downloadMockup(item) {
   showSnackbar('Rendering PNG…');
@@ -960,9 +997,28 @@ async function downloadMockup(item) {
     return;
   }
 
-  // Render at 3x for crisp output
+  if (state.view === 'front') {
+    // Front view — draw directly on canvas (fast, pixel-perfect)
+    const canvas = renderFlatPhone(img);
+    triggerDownload(canvas, item.name);
+  } else {
+    // Angled view — use SVG foreignObject + CSS transform
+    try {
+      const canvas = await renderAngledViaSvg(img);
+      triggerDownload(canvas, item.name);
+    } catch (err) {
+      console.error('Angled export failed, falling back to front:', err);
+      const canvas = renderFlatPhone(img);
+      triggerDownload(canvas, item.name);
+    }
+  }
+}
+
+/* Render the flat front-view phone to a canvas (used for front view
+   and as a fallback for angled view) */
+function renderFlatPhone(img) {
   const SCALE = 3;
-  const PAD = 40; // padding around phone so shadow isn't clipped
+  const PAD = 40;
   const W = PHONE_SPEC.width  + PAD * 2;
   const H = PHONE_SPEC.height + PAD * 2;
 
@@ -971,8 +1027,6 @@ async function downloadMockup(item) {
   canvas.height = H * SCALE;
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
-
-  // Translate to padded origin
   ctx.translate(PAD, PAD);
 
   // --- 1. Drop shadow under the phone ---
@@ -1015,26 +1069,21 @@ async function downloadMockup(item) {
   ctx.fill();
 
   // --- 4. User image with object-fit: cover math ---
-  // Calculate the cover-fit crop manually so the export matches
-  // what CSS object-fit:cover renders in the preview.
   const screenAspect = sw / sh;
   const imgAspect = img.width / img.height;
   let drawW, drawH, drawX, drawY;
   if (imgAspect > screenAspect) {
-    // Image is wider — crop sides
     drawH = sh;
     drawW = sh * imgAspect;
     drawX = sx - (drawW - sw) / 2;
     drawY = sy;
   } else {
-    // Image is taller — crop top/bottom
     drawW = sw;
     drawH = sw / imgAspect;
     drawX = sx;
     drawY = sy - (drawH - sh) / 2;
   }
 
-  // Clip to screen rounded rect, then draw the image
   ctx.save();
   drawRoundRect(ctx, sx, sy, sw, sh, PHONE_SPEC.screenRadius);
   ctx.clip();
@@ -1066,19 +1115,163 @@ async function downloadMockup(item) {
   btnGrad.addColorStop(0, '#1a1a1d');
   btnGrad.addColorStop(1, '#3a3a3e');
   ctx.fillStyle = btnGrad;
-  // Power button
   drawRoundRect(ctx, PHONE_SPEC.buttons.right, PHONE_SPEC.buttons.powerY,
                     PHONE_SPEC.buttons.w, PHONE_SPEC.buttons.powerH, 2);
   ctx.fill();
-  // Volume button
   drawRoundRect(ctx, PHONE_SPEC.buttons.right, PHONE_SPEC.buttons.volumeY,
                     PHONE_SPEC.buttons.w, PHONE_SPEC.buttons.volumeH, 2);
   ctx.fill();
 
-  // --- Trigger download ---
+  return canvas;
+}
+
+/* Render the angled view by building an SVG with a <foreignObject>
+   containing the phone HTML + the CSS 3D transform, then rasterizing
+   it. This uses the browser's native rendering pipeline, so the
+   result is identical to the on-screen preview. */
+async function renderAngledViaSvg(img) {
+  const SCALE = 3;
+  const PAD = 80; // extra padding so the rotated phone + shadow fit
+  const W = PHONE_SPEC.width  + PAD * 2;
+  const H = PHONE_SPEC.height + PAD * 2;
+
+  // Convert the loaded image to a data URL so we can inline it in the SVG
+  const imgDataUrl = imageToDataUrl(img);
+
+  // Compute the cover-fit draw dimensions (same math as renderFlatPhone)
+  const bezel = PHONE_SPEC.bezel;
+  const sw = PHONE_SPEC.width - bezel * 2;
+  const sh = PHONE_SPEC.height - bezel * 2;
+  const screenAspect = sw / sh;
+  const imgAspect = img.width / img.height;
+  let cssW, cssH, cssX, cssY;
+  if (imgAspect > screenAspect) {
+    cssH = sh;
+    cssW = sh * imgAspect;
+    cssX = bezel - (cssW - sw) / 2;
+    cssY = bezel;
+  } else {
+    cssW = sw;
+    cssH = sw / imgAspect;
+    cssX = bezel;
+    cssY = bezel - (cssH - sh) / 2;
+  }
+
+  const [frameC1, frameC2] = FRAME_GRADIENTS[state.frame];
+
+  // Build the phone HTML exactly as it appears in the preview,
+  // with inline styles so the SVG renderer doesn't need external CSS.
+  const phoneHtml = `
+    <div xmlns="http://www.w3.org/1999/xhtml" style="
+      width: ${PHONE_SPEC.width}px;
+      height: ${PHONE_SPEC.height}px;
+      position: relative;
+      transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+      transform-style: preserve-3d;
+    ">
+      <div style="
+        position: absolute; inset: 0;
+        border-radius: ${PHONE_SPEC.outerRadius}px;
+        padding: ${bezel}px;
+        background: linear-gradient(145deg, ${frameC1}, ${frameC2});
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.08),
+          0 0 0 1px rgba(0,0,0,0.6),
+          0 30px 60px rgba(0,0,0,0.55),
+          0 12px 24px rgba(0,0,0,0.4);
+      ">
+        <div style="
+          position: relative; width: 100%; height: 100%;
+          border-radius: ${PHONE_SPEC.screenRadius}px;
+          overflow: hidden; background: #000;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8);
+        ">
+          <img src="${imgDataUrl}" style="
+            position: absolute;
+            width: ${cssW}px; height: ${cssH}px;
+            left: ${cssX - bezel}px; top: ${cssY - bezel}px;
+            object-fit: fill; display: block;
+          " />
+          <div style="
+            position: absolute; top: 7px; left: 50%;
+            transform: translateX(-50%);
+            width: 10px; height: 10px;
+            background: #000; border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+          "></div>
+        </div>
+      </div>
+      <div style="
+        position: absolute; top: 28%; right: -5px;
+        width: 6px; height: 70px;
+        background: linear-gradient(90deg, #1a1a1d, #3a3a3e);
+        border-radius: 0 2px 2px 0;
+      "></div>
+      <div style="
+        position: absolute; top: 42%; right: -5px;
+        width: 6px; height: 50px;
+        background: linear-gradient(90deg, #1a1a1d, #3a3a3e);
+        border-radius: 0 2px 2px 0;
+      "></div>
+    </div>
+  `;
+
+  // Wrap in an SVG with a foreignObject. The SVG is rendered at SCALE
+  // for crisp output.
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="${W * SCALE}" height="${H * SCALE}"
+         viewBox="0 0 ${W} ${H}">
+      <foreignObject x="0" y="0" width="${W}" height="${H}">
+        ${phoneHtml}
+      </foreignObject>
+    </svg>
+  `;
+
+  // Position the phone in the center of the SVG canvas with padding
+  // Adjust the inner div to be offset by PAD
+  const svgWithOffset = svg.replace(
+    'width: ' + PHONE_SPEC.width + 'px;',
+    'width: ' + PHONE_SPEC.width + 'px; margin-left: ' + PAD + 'px; margin-top: ' + PAD + 'px;'
+  );
+
+  const svgBlob = new Blob([svgWithOffset], { type: 'image/svg+xml;charset=utf-8' });
+  // Use a data URL instead of a blob URL to avoid canvas tainting.
+  // Blob URLs taint the canvas in some browsers; data URLs don't.
+  const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgWithOffset);
+
+  try {
+    const renderedImg = await loadImage(svgDataUrl);
+    const canvas = document.createElement('canvas');
+    canvas.width  = W * SCALE;
+    canvas.height = H * SCALE;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(renderedImg, 0, 0);
+    return canvas;
+  } finally {
+    // Nothing to revoke for data URLs
+  }
+}
+
+/* Convert an Image object to a data URL (for inlining in SVG) */
+function imageToDataUrl(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.getContext('2d').drawImage(img, 0, 0);
+  try {
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    // If tainted (CORS), fall back to the src URL directly
+    return img.src;
+  }
+}
+
+/* Trigger the PNG download from a canvas */
+function triggerDownload(canvas, baseName) {
   try {
     const link = document.createElement('a');
-    link.download = item.name.replace(/\.[^.]+$/, '') + '-pixel10.png';
+    link.download = baseName.replace(/\.[^.]+$/, '') + '-pixel10.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
     showSnackbar('Downloaded');
@@ -1161,6 +1354,7 @@ clearAllBtn.addEventListener('click', () => {
    Control changes
    ============================================================ */
 frameSelect.addEventListener('change', (e) => { state.frame = e.target.value; renderGallery(); });
+viewSelect.addEventListener('change', (e) => { state.view = e.target.value; renderGallery(); });
 
 /* ============================================================
    Snackbar
