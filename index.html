@@ -1255,7 +1255,7 @@ async function downloadVideoMockup(item) {
           flatCtx.clearRect(0, 0, phoneW, phoneH);
           drawFlatPhone(flatCtx, video, SCALE, 0);
           drawBackFace(ctx, phoneOutX, phoneOutY, phoneW, phoneH, sinA, cosA, PERSP, PHONE_DEPTH);
-          drawWithPerspective(ctx, flatCanvas, phoneOutX, phoneOutY, phoneW, phoneH, -32, PERSP, 100);
+          drawWithPerspective(ctx, flatCanvas, phoneOutX, phoneOutY, phoneW, phoneH, 32, PERSP, 100);
         }
 
         const frame = new VideoFrame(canvas, {
