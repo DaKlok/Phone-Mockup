@@ -1100,18 +1100,81 @@ function removeMockup(id) {
 
 /* ============================================================
    Download as PNG
+
+   html2canvas does NOT support `backface-visibility: hidden` with
+   3D transforms — it would render both the front AND back of the
+   phone overlapping each other, producing the "weird model" bug.
+   Fix: render a clean, static, FRONT-ONLY phone off-screen and
+   capture that. Guarantees a clean front-face shot every time.
    ============================================================ */
 async function downloadMockup(cell, baseName) {
-  const stage = cell.querySelector('.mockup-stage');
-  const originalTransform = stage.style.transform;
-  if (state.animation === 'tilt') {
-    stage.style.transform = 'rotateY(-12deg) rotateX(6deg)';
-  } else if (state.animation === 'rotate') {
-    stage.style.transform = 'rotateY(-15deg)';
+  const item = state.files.find(f => f.id === cell.dataset.id);
+  if (!item) return;
+
+  showSnackbar('Rendering PNG…');
+
+  // Build a clean off-screen export stage: front-only, no 3D rotation,
+  // just a slight 2D tilt for depth (transform: skew-free).
+  const exportRoot = document.createElement('div');
+  exportRoot.style.cssText = `
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: 520px;
+    padding: 60px;
+    background: transparent;
+    pointer-events: none;
+    z-index: -1;
+  `;
+
+  const mediaHTML = item.type === 'video'
+    ? `<img src="${item.videoFrame || item.url}" alt="" />`
+    : `<img src="${item.url}" alt="" />`;
+
+  exportRoot.innerHTML = `
+    <div style="
+      width: 280px;
+      height: 580px;
+      margin: 0 auto;
+      position: relative;
+      transform: perspective(1200px) rotateY(-6deg) rotateX(3deg);
+      transform-style: preserve-3d;
+      filter: drop-shadow(0 30px 40px rgba(0,0,0,0.5));
+    ">
+      <div class="phone-face frame-${state.frame}" style="position:absolute; inset:0; border-radius:38px;">
+        <div class="phone-screen" style="border-radius:32px;">
+          ${mediaHTML}
+          <div class="punch-hole"></div>
+        </div>
+      </div>
+      <div class="phone-buttons">
+        <div class="btn-power"></div>
+        <div class="btn-volume"></div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(exportRoot);
+
+  // For videos: grab a poster frame first so we export a real frame, not frame 0
+  if (item.type === 'video' && !item.videoFrame) {
+    try {
+      item.videoFrame = await captureVideoFrame(item.url);
+      const img = exportRoot.querySelector('img');
+      img.src = item.videoFrame;
+    } catch (e) { /* fall back to original video element */ }
   }
+
+  // Wait for the export image to load
+  const exportImg = exportRoot.querySelector('img');
+  if (exportImg && !exportImg.complete) {
+    await new Promise(res => { exportImg.onload = res; exportImg.onerror = res; });
+  }
+  // Small delay for layout
+  await new Promise(r => setTimeout(r, 100));
+
   try {
-    showSnackbar('Rendering PNG…');
-    const canvas = await html2canvas(cell, {
+    const canvas = await html2canvas(exportRoot, {
       backgroundColor: null,
       scale: 2,
       useCORS: true,
@@ -1126,8 +1189,33 @@ async function downloadMockup(cell, baseName) {
     console.error(err);
     showSnackbar('Export failed', 'error');
   } finally {
-    stage.style.transform = originalTransform;
+    exportRoot.remove();
   }
+}
+
+// Capture a representative frame from a video as a data URL
+function captureVideoFrame(videoUrl) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.src = videoUrl;
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+    video.addEventListener('loadeddata', () => {
+      // Jump to ~25% in to get a representative frame
+      video.currentTime = Math.min(video.duration * 0.25, 1);
+    }, { once: true });
+    video.addEventListener('seeked', () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 1080;
+        canvas.height = video.videoHeight || 1920;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (e) { reject(e); }
+    }, { once: true });
+    video.addEventListener('error', reject, { once: true });
+  });
 }
 
 downloadAllBtn.addEventListener('click', async () => {
