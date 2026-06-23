@@ -838,7 +838,7 @@ const PHONE_SPEC = {
   outerRadius: 38,
   bezel: 7,
   screenRadius: 32,
-  punchHole: { cx: 140, cy: 22, r: 5 },
+  punchHole: { cx: 140, cy: 26, r: 5 },
   buttons: { right: 280, powerY: 162, powerH: 70, volumeY: 244, volumeH: 50, w: 4 },
   shadow: '0 30px 60px rgba(0,0,0,0.55), 0 12px 24px rgba(0,0,0,0.4)',
 };
@@ -1097,7 +1097,7 @@ async function downloadVideoMockup(item) {
   const fps = 30;
 
   // Output canvas dimensions — phone fills the ENTIRE frame
-  const SCALE = 2;
+  const SCALE = 3;
   const phoneW = PHONE_SPEC.width * SCALE;
   const phoneH = PHONE_SPEC.height * SCALE;
 
@@ -1179,7 +1179,7 @@ async function downloadVideoMockup(item) {
     codec: 'avc1.640033', // H.264 High profile, level 5.1
     width: W,
     height: H,
-    bitrate: 8_000_000,
+    bitrate: 12_000_000,
     framerate: fps,
     latencyMode: 'realtime', // Output encoded frames immediately, don't buffer
   });
@@ -1355,7 +1355,7 @@ async function downloadVideoMockupLegacy(item) {
     return;
   }
 
-  const SCALE = 2;
+  const SCALE = 3;
   const phoneW = PHONE_SPEC.width * SCALE;
   const phoneH = PHONE_SPEC.height * SCALE;
   const usePerspective = state.view === 'angled';
@@ -1471,7 +1471,7 @@ async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
   tempCanvas.height = phoneH;
   const tempCtx = tempCanvas.getContext('2d');
   drawFlatPhone(tempCtx, video, SCALE, 0);
-  const frameDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+  const frameDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
 
   // Compute cover-fit dimensions (same math as renderAngledViaSvg)
   const bezel = PHONE_SPEC.bezel;
@@ -1540,7 +1540,7 @@ async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
             object-fit: fill; display: block;
           " />
           <div style="
-            position: absolute; top: 7px; left: 50%;
+            position: absolute; top: 14px; left: 50%;
             transform: translateX(-50%);
             width: 10px; height: 10px;
             background: #000; border-radius: 50%;
@@ -1867,7 +1867,7 @@ async function renderAngledViaSvg(img) {
             object-fit: fill; display: block;
           " />
           <div style="
-            position: absolute; top: 7px; left: 50%;
+            position: absolute; top: 14px; left: 50%;
             transform: translateX(-50%);
             width: 10px; height: 10px;
             background: #000; border-radius: 50%;
