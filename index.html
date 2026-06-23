@@ -1116,34 +1116,17 @@ async function downloadVideoMockup(item) {
     phoneOutX = 0;
     phoneOutY = 0;
   } else {
-    // Compute bounding box of perspective-projected phone
-    const corners = [
-      { x: -phoneW / 2, y: -phoneH / 2 }, { x: phoneW / 2, y: -phoneH / 2 },
-      { x: phoneW / 2, y: phoneH / 2 }, { x: -phoneW / 2, y: phoneH / 2 },
-    ];
-    const projFront = corners.map(c => {
-      const xRot = c.x * cosA;
-      const zRot = c.x * sinA;
-      const s = PERSP / (PERSP - zRot);
-      return { x: xRot * s, y: c.y * s };
-    });
-    const projBack = corners.map(c => {
-      const xRot = c.x * cosA;
-      const zRot = c.x * sinA - PHONE_DEPTH;
-      const s = PERSP / (PERSP - zRot);
-      return { x: xRot * s, y: c.y * s };
-    });
-    const allX = [...projFront, ...projBack].map(p => p.x);
-    const allY = [...projFront, ...projBack].map(p => p.y);
-    const minX = Math.min(...allX), maxX = Math.max(...allX);
-    const minY = Math.min(...allY), maxY = Math.max(...allY);
-    W = Math.ceil(maxX - minX);
-    H = Math.ceil(maxY - minY);
+    // Angled view — use the same dimensions as the flat phone.
+    // The SVG foreignObject approach handles the 3D transform internally,
+    // so the output canvas just needs to match the phone aspect ratio.
+    // We use the phone dimensions directly for a fullscreen result.
+    W = phoneW;
+    H = phoneH;
     // H.264 requires even dimensions
     W = W % 2 === 0 ? W : W + 1;
     H = H % 2 === 0 ? H : H + 1;
-    phoneOutX = -minX - phoneW / 2;
-    phoneOutY = -minY - phoneH / 2;
+    phoneOutX = 0;
+    phoneOutY = 0;
   }
 
   const canvas = document.createElement('canvas');
@@ -1243,19 +1226,34 @@ async function downloadVideoMockup(item) {
         ctx.clearRect(0, 0, W, H);
 
         if (!usePerspective) {
+          // Front view — draw phone directly
           drawFlatPhone(ctx, video, SCALE, 0);
         } else {
-          const [bgC1, bgC2] = FRAME_GRADIENTS[state.frame];
-          const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-          bgGrad.addColorStop(0, bgC1);
-          bgGrad.addColorStop(1, bgC2);
-          ctx.fillStyle = bgGrad;
-          ctx.fillRect(0, 0, W, H);
+          // Angled view — use SVG foreignObject to match the preview EXACTLY.
+          // We render the current video frame to a temp canvas, convert to data URL,
+          // then build an SVG with the same CSS 3D transform as the preview.
+          // This guarantees the export looks identical to what the user sees.
+          // (Async — we'll encode on the next rVFC callback after the SVG loads)
+          renderAngledFrameAsync(ctx, video, W, H, SCALE).then(() => {
+            if (finished) return;
+            const frame = new VideoFrame(canvas, {
+              timestamp: frameIdx * frameDuration,
+              duration: frameDuration,
+            });
+            encoder.encode(frame, { keyFrame: frameIdx % 30 === 0 });
+            frame.close();
+            frameIdx++;
 
-          flatCtx.clearRect(0, 0, phoneW, phoneH);
-          drawFlatPhone(flatCtx, video, SCALE, 0);
-          drawBackFace(ctx, phoneOutX, phoneOutY, phoneW, phoneH, sinA, cosA, PERSP, PHONE_DEPTH);
-          drawWithPerspective(ctx, flatCanvas, phoneOutX, phoneOutY, phoneW, phoneH, 32, PERSP, 100);
+            const pct = Math.min(99, Math.round((video.currentTime / duration) * 100));
+            showProgress(`Encoding… ${pct}%`, pct);
+          });
+          // Skip the synchronous encode below for angled view
+          if (typeof video.requestVideoFrameCallback === 'function') {
+            video.requestVideoFrameCallback(onFrame);
+          } else {
+            requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
+          }
+          return;
         }
 
         const frame = new VideoFrame(canvas, {
@@ -1456,6 +1454,136 @@ function hideProgress() {
 /* ============================================================
    Angled view helpers
    ============================================================ */
+
+/* Render the angled view for a single video frame using SVG foreignObject.
+   This is the SAME technique used for the static PNG export, guaranteeing
+   the video matches the on-screen preview exactly.
+
+   The video frame is drawn to a temp canvas, converted to a data URL,
+   inlined in an SVG with the CSS 3D transform, loaded as an Image,
+   and drawn onto the output canvas. */
+async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
+  // Draw the current video frame into a temp canvas with the phone mockup (flat)
+  const phoneW = PHONE_SPEC.width * SCALE;
+  const phoneH = PHONE_SPEC.height * SCALE;
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = phoneW;
+  tempCanvas.height = phoneH;
+  const tempCtx = tempCanvas.getContext('2d');
+  drawFlatPhone(tempCtx, video, SCALE, 0);
+  const frameDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+
+  // Compute cover-fit dimensions (same math as renderAngledViaSvg)
+  const bezel = PHONE_SPEC.bezel;
+  const sw = PHONE_SPEC.width - bezel * 2;
+  const sh = PHONE_SPEC.height - bezel * 2;
+  const screenAspect = sw / sh;
+  const vw = video.videoWidth || 540;
+  const vh = video.videoHeight || 960;
+  const videoAspect = vw / vh;
+  let cssW, cssH, cssX, cssY;
+  if (videoAspect > screenAspect) {
+    cssH = sh; cssW = sh * videoAspect;
+    cssX = bezel - (cssW - sw) / 2; cssY = bezel;
+  } else {
+    cssW = sw; cssH = sw / videoAspect;
+    cssX = bezel; cssY = bezel - (cssH - sh) / 2;
+  }
+
+  const [frameC1, frameC2] = FRAME_GRADIENTS[state.frame];
+  const [backC1, backC2] = BACK_FACE_COLORS[state.frame];
+  const PHONE_DEPTH = 18;
+
+  // Build SVG with PAD=80 (same as PNG export) so the 3D rotation fits
+  const PAD = 80;
+  const svgW = PHONE_SPEC.width + PAD * 2;
+  const svgH = PHONE_SPEC.height + PAD * 2;
+
+  const phoneHtml = `
+    <div xmlns="http://www.w3.org/1999/xhtml" style="
+      width: ${PHONE_SPEC.width}px;
+      height: ${PHONE_SPEC.height}px;
+      position: relative;
+      margin-left: ${PAD}px;
+      margin-top: ${PAD}px;
+      transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+      transform-style: preserve-3d;
+    ">
+      <div style="
+        position: absolute; inset: 0;
+        border-radius: ${PHONE_SPEC.outerRadius}px;
+        transform: translateZ(-${PHONE_DEPTH}px);
+        background: linear-gradient(145deg, ${backC1}, ${backC2});
+      "></div>
+      <div style="
+        position: absolute; inset: 0;
+        border-radius: ${PHONE_SPEC.outerRadius}px;
+        padding: ${bezel}px;
+        background: linear-gradient(145deg, ${frameC1}, ${frameC2});
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.08),
+          0 0 0 1px rgba(0,0,0,0.6),
+          0 30px 60px rgba(0,0,0,0.55),
+          0 12px 24px rgba(0,0,0,0.4);
+        transform-style: preserve-3d;
+      ">
+        <div style="
+          position: relative; width: 100%; height: 100%;
+          border-radius: ${PHONE_SPEC.screenRadius}px;
+          overflow: hidden; background: #000;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.8);
+        ">
+          <img src="${frameDataUrl}" style="
+            position: absolute;
+            width: ${cssW}px; height: ${cssH}px;
+            left: ${cssX - bezel}px; top: ${cssY - bezel}px;
+            object-fit: fill; display: block;
+          " />
+          <div style="
+            position: absolute; top: 7px; left: 50%;
+            transform: translateX(-50%);
+            width: 10px; height: 10px;
+            background: #000; border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+          "></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const SVG_SCALE = 3;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="${svgW * SVG_SCALE}" height="${svgH * SVG_SCALE}"
+         viewBox="0 0 ${svgW} ${svgH}">
+      <foreignObject x="0" y="0" width="${svgW}" height="${svgH}">
+        ${phoneHtml}
+      </foreignObject>
+    </svg>
+  `;
+  const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const img = await loadImage(svgDataUrl);
+
+  // Fill background with frame color
+  const [bgC1, bgC2] = FRAME_GRADIENTS[state.frame];
+  const bgGrad = ctx.createLinearGradient(0, 0, outW, outH);
+  bgGrad.addColorStop(0, bgC1);
+  bgGrad.addColorStop(1, bgC2);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, outW, outH);
+
+  // Draw the SVG scaled to fill the output canvas (cover fit)
+  const srcW = svgW * SVG_SCALE;
+  const srcH = svgH * SVG_SCALE;
+  const scaleX = outW / srcW;
+  const scaleY = outH / srcH;
+  const scale = Math.max(scaleX, scaleY);
+  const drawW = srcW * scale;
+  const drawH = srcH * scale;
+  const drawX = (outW - drawW) / 2;
+  const drawY = (outH - drawH) / 2;
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+}
 
 /* Draw the phone's right side edge — the only place where 3D depth
    is visible in the angled view. This connects the front face's right
