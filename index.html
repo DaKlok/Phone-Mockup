@@ -1457,34 +1457,40 @@ function hideProgress() {
    Angled view helpers
    ============================================================ */
 
-/* Draw the back face — a darker quad showing the phone's 3D thickness. */
+/* Draw the phone's right side edge — the only place where 3D depth
+   is visible in the angled view. This connects the front face's right
+   edge to the back face's right edge, showing the phone's thickness.
+   Drawn as a quad (trapezoid) with a darker shade of the frame color. */
 function drawBackFace(ctx, phoneX, phoneY, phoneW, phoneH, sinA, cosA, PERSP, PHONE_DEPTH) {
-  const corners = [
-    { x: 0, y: 0 }, { x: phoneW, y: 0 },
-    { x: phoneW, y: phoneH }, { x: 0, y: phoneH },
-  ];
   const cx = phoneX + phoneW / 2;
   const cy = phoneY + phoneH / 2;
 
-  const projected = corners.map(c => {
-    const x = c.x - phoneW / 2;
-    const y = c.y - phoneH / 2;
-    const xRot = x * cosA;
-    const zRot = x * sinA - PHONE_DEPTH;
-    const scale = PERSP / (PERSP - zRot);
-    return { x: cx + xRot * scale, y: cy + y * scale };
-  });
+  // Right edge of front face (x = +phoneW/2, z = 0)
+  const xFront = phoneW / 2;
+  const zFront = xFront * sinA;
+  const scaleFront = PERSP / (PERSP - zFront);
+  const frontTopY = -phoneH / 2 * scaleFront;
+  const frontBotY = phoneH / 2 * scaleFront;
+  const frontX = cx + xFront * cosA * scaleFront;
 
+  // Right edge of back face (x = +phoneW/2, z = -PHONE_DEPTH)
+  const zBack = xFront * sinA - PHONE_DEPTH;
+  const scaleBack = PERSP / (PERSP - zBack);
+  const backTopY = -phoneH / 2 * scaleBack;
+  const backBotY = phoneH / 2 * scaleBack;
+  const backX = cx + xFront * cosA * scaleBack;
+
+  // Draw the side edge as a quad: frontTop, backTop, backBot, frontBot
   const [bc1, bc2] = BACK_FACE_COLORS[state.frame];
-  const grad = ctx.createLinearGradient(projected[0].x, projected[0].y, projected[2].x, projected[2].y);
+  const grad = ctx.createLinearGradient(frontX, 0, backX, 0);
   grad.addColorStop(0, bc1);
   grad.addColorStop(1, bc2);
 
   ctx.beginPath();
-  ctx.moveTo(projected[0].x, projected[0].y);
-  ctx.lineTo(projected[1].x, projected[1].y);
-  ctx.lineTo(projected[2].x, projected[2].y);
-  ctx.lineTo(projected[3].x, projected[3].y);
+  ctx.moveTo(frontX, cy + frontTopY);
+  ctx.lineTo(backX, cy + backTopY);
+  ctx.lineTo(backX, cy + backBotY);
+  ctx.lineTo(frontX, cy + frontBotY);
   ctx.closePath();
   ctx.fillStyle = grad;
   ctx.fill();
