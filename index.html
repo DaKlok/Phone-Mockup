@@ -1058,6 +1058,12 @@ function getSupportedVideoMime() {
   return 'video/webm';
 }
 
+/* Chroma-key green for angled exports — since browsers can't reliably
+   encode an alpha channel into H.264/MP4 (and WebM-with-alpha needs a
+   dual color+alpha encode pipeline most players don't support anyway),
+   a solid keyable green is the practical stand-in for transparency. */
+const CHROMA_GREEN = '#00ff00';
+
 /* Back-face colors (darker shade of frame) for 3D depth in video */
 const BACK_FACE_COLORS = {
   obsidian:  ['#0a0a0c', '#050507'],
@@ -1108,6 +1114,12 @@ async function downloadVideoMockup(item) {
   const PERSP = 900 * SCALE;
   const PHONE_DEPTH = 18 * SCALE;
 
+  // For angled exports, find exactly how much room the rotated phone +
+  // shadow need (instead of a generic fixed pad) so the export fills the
+  // frame as fully as possible — this only needs computing once, not
+  // per-frame, since it doesn't depend on the video content.
+  const cropBox = usePerspective ? await computeAngledCropBox(SCALE) : null;
+
   let W, H, phoneOutX, phoneOutY;
 
   if (!usePerspective) {
@@ -1116,12 +1128,8 @@ async function downloadVideoMockup(item) {
     phoneOutX = 0;
     phoneOutY = 0;
   } else {
-    // Angled view — use the same dimensions as the flat phone.
-    // The SVG foreignObject approach handles the 3D transform internally,
-    // so the output canvas just needs to match the phone aspect ratio.
-    // We use the phone dimensions directly for a fullscreen result.
-    W = phoneW;
-    H = phoneH;
+    W = cropBox.sw;
+    H = cropBox.sh;
     // H.264 requires even dimensions
     W = W % 2 === 0 ? W : W + 1;
     H = H % 2 === 0 ? H : H + 1;
@@ -1168,18 +1176,30 @@ async function downloadVideoMockup(item) {
     output: (chunk, meta) => {
       muxer.addVideoChunk(chunk, meta);
       encodedFrames++;
-      const pct = Math.min(99, Math.round((encodedFrames / totalFrames) * 100));
-      showProgress(`Encoding… ${pct}%`, pct);
+      // Progress is reported from the capture loop below (frameIdx/totalFrames),
+      // not here — encoding is async and runs at a different pace than
+      // capture, so updating the bar from both places made it jump around.
     },
     error: (e) => console.error('Encoder error:', e),
   });
+
+  // Scale bitrate to resolution (bits-per-pixel target), not a flat
+  // number. The angled canvas is ~2.7x more pixels than the flat-phone
+  // canvas (it needs padding so the rotated phone isn't clipped) — a
+  // flat 12 Mbps that looked fine at 840x1740 starves the larger angled
+  // frame of bits and looks visibly worse. 0.27 bits/pixel/frame matches
+  // what 12 Mbps gave the original flat-phone resolution, so quality stays
+  // consistent across view modes regardless of canvas size.
+  const BITS_PER_PIXEL = 0.27;
+  const bitrate = Math.min(40_000_000, Math.max(6_000_000, Math.round(W * H * fps * BITS_PER_PIXEL)));
 
   // Configure encoder for H.264
   encoder.configure({
     codec: 'avc1.640033', // H.264 High profile, level 5.1
     width: W,
     height: H,
-    bitrate: 12_000_000,
+    bitrate,
+    bitrateMode: 'variable', // let bitrate flex with scene complexity instead of a hard cap
     framerate: fps,
     latencyMode: 'realtime', // Output encoded frames immediately, don't buffer
   });
@@ -1234,7 +1254,7 @@ async function downloadVideoMockup(item) {
           // then build an SVG with the same CSS 3D transform as the preview.
           // This guarantees the export looks identical to what the user sees.
           // (Async — we'll encode on the next rVFC callback after the SVG loads)
-          renderAngledFrameAsync(ctx, video, W, H, SCALE).then(() => {
+          renderAngledFrameAsync(ctx, video, W, H, SCALE, cropBox).then(() => {
             if (finished) return;
             const frame = new VideoFrame(canvas, {
               timestamp: frameIdx * frameDuration,
@@ -1244,7 +1264,7 @@ async function downloadVideoMockup(item) {
             frame.close();
             frameIdx++;
 
-            const pct = Math.min(99, Math.round((video.currentTime / duration) * 100));
+            const pct = Math.min(99, Math.round((frameIdx / totalFrames) * 100));
             showProgress(`Encoding… ${pct}%`, pct);
           });
           // Skip the synchronous encode below for angled view
@@ -1264,7 +1284,7 @@ async function downloadVideoMockup(item) {
         frame.close();
         frameIdx++;
 
-        const pct = Math.min(99, Math.round((video.currentTime / duration) * 100));
+        const pct = Math.min(99, Math.round((frameIdx / totalFrames) * 100));
         showProgress(`Encoding… ${pct}%`, pct);
       }
 
@@ -1359,9 +1379,15 @@ async function downloadVideoMockupLegacy(item) {
   const phoneW = PHONE_SPEC.width * SCALE;
   const phoneH = PHONE_SPEC.height * SCALE;
   const usePerspective = state.view === 'angled';
+  const cropBox = usePerspective ? await computeAngledCropBox(SCALE) : null;
 
-  const W = phoneW;
-  const H = phoneH;
+  let W = usePerspective ? cropBox.sw : phoneW;
+  let H = usePerspective ? cropBox.sh : phoneH;
+  if (usePerspective) {
+    // Even dimensions are friendlier to most video codecs/players.
+    W = W % 2 === 0 ? W : W + 1;
+    H = H % 2 === 0 ? H : H + 1;
+  }
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -1369,7 +1395,9 @@ async function downloadVideoMockupLegacy(item) {
 
   const mimeType = getSupportedVideoMime();
   const stream = canvas.captureStream(30);
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 12_000_000 });
+  const BITS_PER_PIXEL = 0.27; // see downloadVideoMockup for rationale
+  const bitrate = Math.min(40_000_000, Math.max(6_000_000, Math.round(W * H * 30 * BITS_PER_PIXEL)));
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
   const chunks = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
@@ -1400,14 +1428,24 @@ async function downloadVideoMockupLegacy(item) {
   }, 200);
 
   await new Promise(resolve => {
+    let drawing = false;
     function drawFrame() {
       if (video.ended) {
         clearInterval(updateProgress);
         setTimeout(() => { if (recorder.state !== 'inactive') recorder.stop(); resolve(); }, 100);
         return;
       }
-      ctx.clearRect(0, 0, W, H);
-      drawFlatPhone(ctx, video, SCALE, 0);
+      if (usePerspective) {
+        // Async SVG-based render — skip overlapping draws so frames
+        // don't queue up faster than they can be rasterized.
+        if (!drawing) {
+          drawing = true;
+          renderAngledFrameAsync(ctx, video, W, H, SCALE, cropBox).finally(() => { drawing = false; });
+        }
+      } else {
+        ctx.clearRect(0, 0, W, H);
+        drawFlatPhone(ctx, video, SCALE, 0);
+      }
       requestAnimationFrame(drawFrame);
     }
     drawFrame();
@@ -1455,6 +1493,110 @@ function hideProgress() {
    Angled view helpers
    ============================================================ */
 
+/* Find the tightest bounding box around the rotated phone + its drop
+   shadow, on a transparent canvas. This only depends on the frame color
+   and rotation angle — not on the video content — so it's computed once
+   per export and reused for every frame, instead of being recalculated
+   30 times a second.
+
+   This is what makes the export "fullscreen": instead of a fixed 80px
+   pad on every side (safe, but wastes a lot of frame on a generic empty
+   margin), we render once, measure exactly how far the phone + shadow
+   actually extend, and crop to that — so the phone fills as much of the
+   frame as it can without ever clipping. */
+async function computeAngledCropBox(SCALE) {
+  const bezel = PHONE_SPEC.bezel;
+  const [frameC1, frameC2] = FRAME_GRADIENTS[state.frame];
+  const [backC1, backC2] = BACK_FACE_COLORS[state.frame];
+  const PHONE_DEPTH = 18;
+  const PAD = 80; // generous starting canvas — we crop the real content out of it
+  const svgW = PHONE_SPEC.width + PAD * 2;
+  const svgH = PHONE_SPEC.height + PAD * 2;
+
+  const phoneHtml = `
+    <div xmlns="http://www.w3.org/1999/xhtml" style="
+      width: ${PHONE_SPEC.width}px;
+      height: ${PHONE_SPEC.height}px;
+      position: relative;
+      margin-left: ${PAD}px;
+      margin-top: ${PAD}px;
+      transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+      transform-style: preserve-3d;
+    ">
+      <div style="
+        position: absolute; inset: 0;
+        border-radius: ${PHONE_SPEC.outerRadius}px;
+        transform: translateZ(-${PHONE_DEPTH}px);
+        background: linear-gradient(145deg, ${backC1}, ${backC2});
+      "></div>
+      <div style="
+        position: absolute; inset: 0;
+        border-radius: ${PHONE_SPEC.outerRadius}px;
+        padding: ${bezel}px;
+        background: linear-gradient(145deg, ${frameC1}, ${frameC2});
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.08),
+          0 0 0 1px rgba(0,0,0,0.6),
+          0 30px 60px rgba(0,0,0,0.55),
+          0 12px 24px rgba(0,0,0,0.4);
+        transform-style: preserve-3d;
+      ">
+        <div style="
+          position: relative; width: 100%; height: 100%;
+          border-radius: ${PHONE_SPEC.screenRadius}px;
+          overflow: hidden; background: #000;
+        "></div>
+      </div>
+    </div>
+  `;
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="${svgW * SCALE}" height="${svgH * SCALE}"
+         viewBox="0 0 ${svgW} ${svgH}">
+      <foreignObject x="0" y="0" width="${svgW}" height="${svgH}">
+        ${phoneHtml}
+      </foreignObject>
+    </svg>
+  `;
+  const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const img = await loadImage(svgDataUrl);
+
+  const probeCanvas = document.createElement('canvas');
+  probeCanvas.width = svgW * SCALE;
+  probeCanvas.height = svgH * SCALE;
+  const probeCtx = probeCanvas.getContext('2d');
+  probeCtx.drawImage(img, 0, 0);
+
+  const { data, width: pw, height: ph } = probeCtx.getImageData(0, 0, probeCanvas.width, probeCanvas.height);
+  let minX = pw, minY = ph, maxX = 0, maxY = 0;
+  // Step by 2px — this runs once per export, not per frame, but no need to scan every pixel.
+  for (let y = 0; y < ph; y += 2) {
+    for (let x = 0; x < pw; x += 2) {
+      const alpha = data[(y * pw + x) * 4 + 3];
+      if (alpha > 4) { // ignore near-invisible antialiasing fringe
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX || maxY < minY) {
+    // Safety fallback — shouldn't happen, but never crop to nothing.
+    minX = 0; minY = 0; maxX = pw; maxY = ph;
+  }
+
+  // A little breathing room so the phone doesn't touch the very edge.
+  const margin = Math.round(16 * (SCALE / 3));
+  minX = Math.max(0, minX - margin);
+  minY = Math.max(0, minY - margin);
+  maxX = Math.min(pw, maxX + margin);
+  maxY = Math.min(ph, maxY + margin);
+
+  return { sx: minX, sy: minY, sw: maxX - minX, sh: maxY - minY };
+}
+
 /* Render the angled view for a single video frame using SVG foreignObject.
    This is the SAME technique used for the static PNG export, guaranteeing
    the video matches the on-screen preview exactly.
@@ -1462,15 +1604,22 @@ function hideProgress() {
    The video frame is drawn to a temp canvas, converted to a data URL,
    inlined in an SVG with the CSS 3D transform, loaded as an Image,
    and drawn onto the output canvas. */
-async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
-  // Draw the current video frame into a temp canvas with the phone mockup (flat)
-  const phoneW = PHONE_SPEC.width * SCALE;
-  const phoneH = PHONE_SPEC.height * SCALE;
+async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE, cropBox) {
+  // Capture ONLY the raw video pixels at native resolution. The phone
+  // frame/bezel/notch are built once, by the foreignObject HTML below —
+  // this image is just what goes inside that screen window. (Previously
+  // this ran the frame through drawFlatPhone(), which draws a COMPLETE
+  // phone mockup — frame, bezel, notch and all — and that whole composite
+  // got pasted in as "screen content" inside a second phone frame. That
+  // double-chrome bug is what made the notch look wrong and the video
+  // look oddly scaled.)
+  const vw = video.videoWidth || 540;
+  const vh = video.videoHeight || 960;
   const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = phoneW;
-  tempCanvas.height = phoneH;
+  tempCanvas.width = vw;
+  tempCanvas.height = vh;
   const tempCtx = tempCanvas.getContext('2d');
-  drawFlatPhone(tempCtx, video, SCALE, 0);
+  tempCtx.drawImage(video, 0, 0, vw, vh);
   const frameDataUrl = tempCanvas.toDataURL('image/jpeg', 0.95);
 
   // Compute cover-fit dimensions (same math as renderAngledViaSvg)
@@ -1478,8 +1627,6 @@ async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
   const sw = PHONE_SPEC.width - bezel * 2;
   const sh = PHONE_SPEC.height - bezel * 2;
   const screenAspect = sw / sh;
-  const vw = video.videoWidth || 540;
-  const vh = video.videoHeight || 960;
   const videoAspect = vw / vh;
   let cssW, cssH, cssX, cssY;
   if (videoAspect > screenAspect) {
@@ -1551,7 +1698,7 @@ async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
     </div>
   `;
 
-  const SVG_SCALE = 3;
+  const SVG_SCALE = SCALE;
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg"
          width="${svgW * SVG_SCALE}" height="${svgH * SVG_SCALE}"
@@ -1564,25 +1711,22 @@ async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE) {
   const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   const img = await loadImage(svgDataUrl);
 
-  // Fill background with frame color
-  const [bgC1, bgC2] = FRAME_GRADIENTS[state.frame];
-  const bgGrad = ctx.createLinearGradient(0, 0, outW, outH);
-  bgGrad.addColorStop(0, bgC1);
-  bgGrad.addColorStop(1, bgC2);
-  ctx.fillStyle = bgGrad;
+  // Chroma-key green background (see CHROMA_GREEN) instead of the frame
+  // color — makes it easy to key out in any video editor afterward.
+  ctx.fillStyle = CHROMA_GREEN;
   ctx.fillRect(0, 0, outW, outH);
 
-  // Draw the SVG scaled to fill the output canvas (cover fit)
-  const srcW = svgW * SVG_SCALE;
-  const srcH = svgH * SVG_SCALE;
-  const scaleX = outW / srcW;
-  const scaleY = outH / srcH;
-  const scale = Math.max(scaleX, scaleY);
-  const drawW = srcW * scale;
-  const drawH = srcH * scale;
-  const drawX = (outW - drawW) / 2;
-  const drawY = (outH - drawH) / 2;
-  ctx.drawImage(img, drawX, drawY, drawW, drawH);
+  // Crop tightly to the precomputed bounding box (phone + shadow, no
+  // wasted padding) and stretch that crop to fill the whole output
+  // canvas. The output canvas is sized to match the crop box's aspect
+  // ratio (see downloadVideoMockup), so this fills the frame edge to
+  // edge — only the corners around the rotated phone's silhouette stay
+  // green.
+  ctx.drawImage(
+    img,
+    cropBox.sx, cropBox.sy, cropBox.sw, cropBox.sh,
+    0, 0, outW, outH
+  );
 }
 
 /* Draw the phone's right side edge — the only place where 3D depth
