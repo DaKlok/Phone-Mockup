@@ -507,7 +507,7 @@ body::before {
   transform: translateY(-6px);
 }
 
-/* Angled view — perspective is set on .mockup-cell, so here we only apply rotation */
+/* Angled view (right) — perspective is set on .mockup-cell, so here we only apply rotation */
 .mockup-cell.view-angled .mockup-stage {
   transform: rotateY(-32deg) rotateX(5deg);
   transform-style: preserve-3d;
@@ -522,6 +522,25 @@ body::before {
 }
 .mockup-cell.view-angled .btn-power,
 .mockup-cell.view-angled .btn-volume {
+  width: 6px;
+}
+
+/* Angled view (left) — mirrored: left side closer, right edge hidden, left edge visible */
+.mockup-cell.view-angled-left .mockup-stage {
+  transform: rotateY(32deg) rotateX(5deg);
+  transform-style: preserve-3d;
+}
+.mockup-cell.view-angled-left:hover .mockup-stage {
+  transform: rotateY(32deg) rotateX(5deg) translateY(-6px);
+}
+/* Move phone-buttons to the left side for the mirrored view */
+.mockup-cell.view-angled-left .phone-buttons {
+  right: auto;
+  left: -5px;
+  width: 6px;
+}
+.mockup-cell.view-angled-left .btn-power,
+.mockup-cell.view-angled-left .btn-volume {
   width: 6px;
 }
 
@@ -782,7 +801,8 @@ body::before {
         <label for="viewSelect">View</label>
         <select class="m3-select" id="viewSelect">
           <option value="front" selected>Front</option>
-          <option value="angled">Angled</option>
+          <option value="angled">Angled — Left Side</option>
+          <option value="angled-left">Angled — Right Side</option>
         </select>
       </div>
       <div class="control-group">
@@ -858,6 +878,14 @@ const ANGLED_SPEC = {
   rotateY: -32,   // degrees (negative = tilt left, showing right edge)
   rotateX: 5,     // degrees (slight downward tilt)
 };
+
+/* Returns the CSS transform string for the current angled view.
+   'angled' = right side closer (rotateY negative)
+   'angled-left' = left side closer (rotateY positive, mirrored) */
+function getAngledTransform() {
+  const yAngle = state.view === 'angled-left' ? 32 : -32;
+  return `perspective(900px) rotateY(${yAngle}deg) rotateX(5deg)`;
+}
 
 /* ============================================================
    State
@@ -1107,7 +1135,7 @@ async function downloadVideoMockup(item) {
   const phoneW = PHONE_SPEC.width * SCALE;
   const phoneH = PHONE_SPEC.height * SCALE;
 
-  const usePerspective = state.view === 'angled';
+  const usePerspective = state.view === 'angled' || state.view === 'angled-left';
   const angleYRad = 32 * Math.PI / 180;
   const sinA = Math.sin(angleYRad);
   const cosA = Math.cos(angleYRad);
@@ -1204,118 +1232,67 @@ async function downloadVideoMockup(item) {
     latencyMode: 'realtime', // Output encoded frames immediately, don't buffer
   });
 
-  // Process video frames using requestVideoFrameCallback with backpressure.
+  // Seek-based frame capture: instead of playing the video in real-time
+  // and capturing frames as they come (which produces uneven frame spacing
+  // and choppy playback), we seek to exact timestamps (0, 1/30, 2/30, ...)
+  // and capture each one. This guarantees perfectly-spaced 30fps output.
   showProgress('Encoding… 0%', 0);
 
-  const frameDuration = 1_000_000 / fps; // microseconds per frame
-  let frameIdx = 0;
+  const frameDuration = Math.round(1_000_000 / fps); // microseconds per frame
+  const targetFrameTimes = [];
+  for (let i = 0; i < totalFrames; i++) {
+    const t = i / fps;
+    if (t < duration) targetFrameTimes.push(t);
+  }
 
-  // Seek to start — use a one-time event listener to avoid stale handlers
-  await new Promise((res) => {
-    const handler = () => { video.removeEventListener('seeked', handler); res(); };
-    video.addEventListener('seeked', handler, { once: true });
-    video.currentTime = 0;
-  });
-
-  await video.play();
-
-  // Frame capture loop with backpressure: if the encoder queue grows
-  // too large, we wait for it to drain before capturing more frames.
-  // This prevents the browser tab from crashing on long videos.
-  await new Promise((resolve) => {
-    let finished = false;
-    let lastTime = -1;
-
-    function finish() {
-      if (finished) return;
-      finished = true;
-      resolve();
+  for (let i = 0; i < targetFrameTimes.length; i++) {
+    if (i % 10 === 0) {
+      const pct = Math.min(99, Math.round((i / targetFrameTimes.length) * 100));
+      showProgress(`Encoding… ${pct}%`, pct);
     }
 
-    // Safety net: if the video ends but rVFC doesn't fire one last time,
-    // the 'ended' event ensures we resolve.
-    video.addEventListener('ended', finish, { once: true });
+    const targetTime = targetFrameTimes[i];
 
-    function onFrame(now, metadata) {
-      if (finished) return;
+    // Seek to the exact frame time
+    video.currentTime = targetTime;
+    await new Promise((res) => {
+      const handler = () => { video.removeEventListener('seeked', handler); res(); };
+      video.addEventListener('seeked', handler, { once: true });
+    });
 
-      // Only encode if we got a new frame
-      if (metadata.mediaTime !== lastTime) {
-        lastTime = metadata.mediaTime;
+    // Draw the frame
+    ctx.clearRect(0, 0, W, H);
 
-        ctx.clearRect(0, 0, W, H);
-
-        if (!usePerspective) {
-          // Front view — draw phone directly
-          drawFlatPhone(ctx, video, SCALE, 0);
-        } else {
-          // Angled view — use SVG foreignObject to match the preview EXACTLY.
-          // We render the current video frame to a temp canvas, convert to data URL,
-          // then build an SVG with the same CSS 3D transform as the preview.
-          // This guarantees the export looks identical to what the user sees.
-          // (Async — we'll encode on the next rVFC callback after the SVG loads)
-          renderAngledFrameAsync(ctx, video, W, H, SCALE, cropBox).then(() => {
-            if (finished) return;
-            const frame = new VideoFrame(canvas, {
-              timestamp: frameIdx * frameDuration,
-              duration: frameDuration,
-            });
-            encoder.encode(frame, { keyFrame: frameIdx % 30 === 0 });
-            frame.close();
-            frameIdx++;
-
-            const pct = Math.min(99, Math.round((frameIdx / totalFrames) * 100));
-            showProgress(`Encoding… ${pct}%`, pct);
-          });
-          // Skip the synchronous encode below for angled view
-          if (typeof video.requestVideoFrameCallback === 'function') {
-            video.requestVideoFrameCallback(onFrame);
-          } else {
-            requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
-          }
-          return;
-        }
-
-        const frame = new VideoFrame(canvas, {
-          timestamp: frameIdx * frameDuration,
-          duration: frameDuration,
-        });
-        encoder.encode(frame, { keyFrame: frameIdx % 30 === 0 });
-        frame.close();
-        frameIdx++;
-
-        const pct = Math.min(99, Math.round((frameIdx / totalFrames) * 100));
-        showProgress(`Encoding… ${pct}%`, pct);
-      }
-
-      // Backpressure: if the encoder queue is too large, wait briefly
-      // before requesting the next frame. This prevents memory blowup
-      // on long videos.
-      if (encoder.encodeQueueSize > 5) {
-        setTimeout(() => {
-          if (!finished) {
-            if (typeof video.requestVideoFrameCallback === 'function') {
-              video.requestVideoFrameCallback(onFrame);
-            } else {
-              requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
-            }
-          }
-        }, 10);
-      } else {
-        if (typeof video.requestVideoFrameCallback === 'function') {
-          video.requestVideoFrameCallback(onFrame);
-        } else {
-          requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
-        }
-      }
-    }
-
-    if (typeof video.requestVideoFrameCallback === 'function') {
-      video.requestVideoFrameCallback(onFrame);
+    if (!usePerspective) {
+      // Front view — draw phone directly
+      drawFlatPhone(ctx, video, SCALE, 0);
+      const frame = new VideoFrame(canvas, {
+        timestamp: i * frameDuration,
+        duration: frameDuration,
+      });
+      encoder.encode(frame, { keyFrame: i % 30 === 0 });
+      frame.close();
     } else {
-      requestAnimationFrame(() => onFrame(performance.now(), { mediaTime: video.currentTime }));
+      // Angled view — use SVG foreignObject to match the preview
+      await renderAngledFrameAsync(ctx, video, W, H, SCALE, cropBox);
+      const frame = new VideoFrame(canvas, {
+        timestamp: i * frameDuration,
+        duration: frameDuration,
+      });
+      encoder.encode(frame, { keyFrame: i % 30 === 0 });
+      frame.close();
     }
-  });
+
+    // Backpressure: let the encoder drain if queue is too large
+    if (encoder.encodeQueueSize > 10) {
+      await new Promise(r => setTimeout(r, 1));
+    }
+
+    // Yield to the event loop periodically to keep UI responsive
+    if (i % 5 === 0) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
 
   await encoder.flush();
   muxer.finalize();
@@ -1378,7 +1355,7 @@ async function downloadVideoMockupLegacy(item) {
   const SCALE = 3;
   const phoneW = PHONE_SPEC.width * SCALE;
   const phoneH = PHONE_SPEC.height * SCALE;
-  const usePerspective = state.view === 'angled';
+  const usePerspective = state.view === 'angled' || state.view === 'angled-left';
   const cropBox = usePerspective ? await computeAngledCropBox(SCALE) : null;
 
   let W = usePerspective ? cropBox.sw : phoneW;
@@ -1520,7 +1497,7 @@ async function computeAngledCropBox(SCALE) {
       position: relative;
       margin-left: ${PAD}px;
       margin-top: ${PAD}px;
-      transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+      transform: ${getAngledTransform()};
       transform-style: preserve-3d;
     ">
       <div style="
@@ -1653,7 +1630,7 @@ async function renderAngledFrameAsync(ctx, video, outW, outH, SCALE, cropBox) {
       position: relative;
       margin-left: ${PAD}px;
       margin-top: ${PAD}px;
-      transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+      transform: ${getAngledTransform()};
       transform-style: preserve-3d;
     ">
       <div style="
@@ -1975,7 +1952,7 @@ async function renderAngledViaSvg(img) {
       width: ${PHONE_SPEC.width}px;
       height: ${PHONE_SPEC.height}px;
       position: relative;
-      transform: perspective(900px) rotateY(-32deg) rotateX(5deg);
+      transform: ${getAngledTransform()};
       transform-style: preserve-3d;
     ">
       <!-- Back face (pushed behind for 3D depth) -->
